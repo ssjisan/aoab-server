@@ -19,7 +19,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "poc/videos", // Specify the folder name here
+        folder: "aoa-bd/videos", // Specify the folder name here
       },
       (error, result) => {
         if (error) {
@@ -100,7 +100,10 @@ export const uploadNewVideo = async (req, res) => {
 export const getVideoList = async (req, res) => {
   try {
     // Fetch all albums from the database
-    const videos = await Videos.find();
+    const videos = await Videos.find().sort({
+      sequence: 1,
+      createdAt: -1,
+    });
     // Return the list of albums as a JSON response
     res.status(200).json(videos);
   } catch (err) {
@@ -109,20 +112,23 @@ export const getVideoList = async (req, res) => {
   }
 };
 
+//  Update Sequence of Resource
 export const updateVideoSequence = async (req, res) => {
   try {
-    const { reorderedVideos } = req.body;
+    const { reorderedVideos } = req.body; // Array of videos with updated sequences
 
-    // Clear the current collection
-    await Videos.deleteMany({});
+    const bulkOps = reorderedVideos.map((resource, index) => ({
+      updateOne: {
+        filter: { _id: resource._id },
+        update: { $set: { sequence: index + 1 } }, // Update the sequence field
+      },
+    }));
 
-    // Insert the reordered videos
-    await Videos.insertMany(reorderedVideos);
+    await Videos.bulkWrite(bulkOps);
 
     res.status(200).json({ message: "Video sequence updated successfully" });
-  } catch (err) {
-    console.error("Error updating video sequence:", err);
-    res.status(500).json({ message: "Internal server error" });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating video sequence" });
   }
 };
 
@@ -238,7 +244,6 @@ export const updateVideo = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // Controller for fetching a limited number of videos
 export const getLimitedVideo = async (req, res) => {

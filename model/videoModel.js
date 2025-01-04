@@ -25,6 +25,7 @@ const videoSchema = new mongoose.Schema(
       enum: ["youtube", "google-drive"], // Enum to restrict to the two types
       required: true,
     },
+    sequence: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -4,15 +4,9 @@ import mongoose from "mongoose";
 import morgan from "morgan";
 import cors from "cors";
 import authRoutes from "./routers/authRoutes.js";
-import albumRoutes from "./routers/albumRoutes.js";
+import onlineLearningRoutes from "./routers/onlineLearningRoutes.js";
 import videoRoutes from "./routers/videoRoutes.js";
-import profileRoutes from "./routers/profileRoutes.js";
-import appointmentRoutes from "./routers/appointmentRoutes.js";
-import treatmentsRoutes from "./routers/treatmentsRoutes.js";
-import blogPostRoutes from "./routers/blogPostRoutes.js";
-import linkRoutes from "./routers/linkRoutes.js";
-import formRoutes from "./routers/formRoutes.js";
-import exerciseVideoRoutes from "./routers/exerciseVideoRoutes.js";
+import courseEventRoutes from "./routers/courseEventRoutes.js";
 
 dotenv.config();
 // exercise
@@ -33,15 +27,11 @@ app.use(express.json());
 
 // Router middleware
 app.use(authRoutes);
-app.use(albumRoutes);
+app.use(onlineLearningRoutes);
 app.use(videoRoutes);
-app.use(exerciseVideoRoutes);
-app.use(profileRoutes);
-app.use(appointmentRoutes);
-app.use(treatmentsRoutes);
-app.use(blogPostRoutes);
-app.use(linkRoutes);
-app.use(formRoutes);
+app.use(courseEventRoutes);
+// app.use(linkRoutes);
+// app.use(formRoutes);
 
 const port = process.env.PORT || 8001;
 

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const formModal = new mongoose.Schema(
+const onlineLearningModel = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -13,8 +13,9 @@ const formModal = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    sequence: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Forms", formModal);
+export default mongoose.model("OnlineLearning", onlineLearningModel);
