@@ -36,6 +36,30 @@ export const listOfResources = async (req, res) => {
   }
 };
 
+
+// Controller for fetching a limited number of videos
+export const getLimitedResources = async (req, res) => {
+  try {
+    // Parse limit and skip from query parameters
+    const limit = parseInt(req.query.limit) || 1; // Default to 5 if not provided
+    const skip = parseInt(req.query.skip) || 0; // Default to 0 if not provided
+
+    // Fetch resources from the database with limit and skip
+    const resources = await OnlineLearning.find().skip(skip).limit(limit);
+
+    // Check if there are more resources left to load
+    const totalResources = await OnlineLearning.countDocuments();
+    const hasMore = skip + limit < totalResources;
+
+    // Respond with the resources and whether more resources are available
+    res.status(200).json({ resources, hasMore });
+  } catch (err) {
+    console.error("Error fetching limited videos:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
 //  Update Sequence of Resource
 export const updateResourcesSequence = async (req, res) => {
   try {
@@ -118,5 +142,34 @@ export const removeResource = async (req, res) => {
   } catch (error) {
     console.error("Error deleting resource:", error);
     res.status(500).json({ error: "Internal server error" }); // Handle server errors
+  }
+};
+
+
+export const searchResources = async (req, res) => {
+  try {
+    const searchQuery = req.query.searchQuery || ""; // Get search query, default to an empty string
+    const limit = parseInt(req.query.limit) || 5; // Default limit to 5
+    const skip = parseInt(req.query.skip) || 0; // Default skip to 0
+
+    // Perform a case-insensitive search in the database
+    const resources = await OnlineLearning.find({
+      title: { $regex: searchQuery, $options: "i" }, // Match title with search query
+    })
+      .skip(skip)
+      .limit(limit);
+
+    // Total matching documents for search query
+    const totalResources = await OnlineLearning.countDocuments({
+      title: { $regex: searchQuery, $options: "i" },
+    });
+
+    // Check if there are more results
+    const hasMore = skip + limit < totalResources;
+
+    res.status(200).json({ resources, hasMore });
+  } catch (err) {
+    console.error("Error searching resources:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
