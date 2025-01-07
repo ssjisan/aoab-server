@@ -25,4 +25,3 @@ router.put("/resource/:resourceId", requiredSignIn, updateResource);
 router.delete("/resource/:resourceId", removeResource);
 
 export default router;
-// search-resources

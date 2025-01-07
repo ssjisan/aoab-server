@@ -30,8 +30,6 @@ app.use(authRoutes);
 app.use(onlineLearningRoutes);
 app.use(videoRoutes);
 app.use(courseEventRoutes);
-// app.use(linkRoutes);
-// app.use(formRoutes);
 
 const port = process.env.PORT || 8001;
 
