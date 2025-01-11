@@ -152,10 +152,11 @@ export const searchResources = async (req, res) => {
     const limit = parseInt(req.query.limit) || 5; // Default limit to 5
     const skip = parseInt(req.query.skip) || 0; // Default skip to 0
 
-    // Perform a case-insensitive search in the database
+    // Perform a case-insensitive search in the database and sort by sequence and createdAt
     const resources = await OnlineLearning.find({
       title: { $regex: searchQuery, $options: "i" }, // Match title with search query
     })
+      .sort({ sequence: 1, createdAt: -1 }) // Sort by sequence, then by createdAt
       .skip(skip)
       .limit(limit);
 
