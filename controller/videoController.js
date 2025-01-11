@@ -253,7 +253,13 @@ export const getLimitedVideo = async (req, res) => {
     const skip = parseInt(req.query.skip) || 0; // Default to 0 if not provided
 
     // Fetch videos from the database with limit and skip
-    const videos = await Videos.find().skip(skip).limit(limit);
+    const videos = await Videos.find()
+      .sort({
+        sequence: 1,
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(limit);
 
     // Check if there are more videos left to load
     const totalVideos = await Videos.countDocuments();
@@ -266,5 +272,3 @@ export const getLimitedVideo = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-
