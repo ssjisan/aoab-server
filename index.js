@@ -7,7 +7,7 @@ import authRoutes from "./routers/authRoutes.js";
 import onlineLearningRoutes from "./routers/onlineLearningRoutes.js";
 import videoRoutes from "./routers/videoRoutes.js";
 import courseEventRoutes from "./routers/courseEventRoutes.js";
-
+import importantLinksRoutes from "./routers/importantLinksRoutes.js";
 dotenv.config();
 // exercise
 const app = express();
@@ -28,6 +28,7 @@ app.use(express.json());
 // Router middleware
 app.use(authRoutes);
 app.use(onlineLearningRoutes);
+app.use(importantLinksRoutes);
 app.use(videoRoutes);
 app.use(courseEventRoutes);
 
