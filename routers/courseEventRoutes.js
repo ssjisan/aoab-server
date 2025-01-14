@@ -32,6 +32,6 @@ router.post("/update-course-event-order", requiredSignIn, updateCoursesEventsSeq
 router.get("/events-by-status", requiredSignIn, getEventsByStatus);
 router.get("/courses_events", getFilteredCoursesEvents);
 router.delete("/courses_events/:courseEventId", requiredSignIn, deleteCourseEvent);
-router.get("/courses_events/:courseEventId", requiredSignIn, readCourseEvent);
+router.get("/courses_events/:courseEventId", readCourseEvent);
 router.put("/courses_events/:courseEventId", requiredSignIn,upload.single("coverPhoto"), updateCourseEvent);
 export default router;
