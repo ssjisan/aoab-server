@@ -20,8 +20,8 @@ router.get("/links", listOfLinks);
 router.get("/search-links", searchLinks);
 router.get("/limited-links", getLimitedLinks);
 router.post("/update-link-order", requiredSignIn, updateLinksSequence);
-router.get("/link/:LinkId", requiredSignIn, readLink);
-router.put("/link/:LinkId", requiredSignIn, updateLink);
-router.delete("/link/:LinkId", removeLink);
+router.get("/link/:linkId", requiredSignIn, readLink);
+router.put("/link/:linkId", requiredSignIn, updateLink);
+router.delete("/link/:linkId", removeLink);
 
 export default router;

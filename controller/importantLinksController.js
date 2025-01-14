@@ -128,9 +128,9 @@ export const removeLink = async (req, res) => {
     const { linkId } = req.params; // Get the link ID from the request parameters
 
     // Find and delete the resource by ID
-    const linkResource = await ImportantLinks.findByIdAndDelete(linkId);
+    const link = await ImportantLinks.findByIdAndDelete(linkId);
 
-    if (!linkResource) {
+    if (!link) {
       return res.status(404).json({ error: "Link not found" }); // Return error if the link doesn't exist
     }
 
