@@ -8,6 +8,7 @@ import onlineLearningRoutes from "./routers/onlineLearningRoutes.js";
 import videoRoutes from "./routers/videoRoutes.js";
 import courseEventRoutes from "./routers/courseEventRoutes.js";
 import importantLinksRoutes from "./routers/importantLinksRoutes.js";
+import formsRoutes from "./routers/formsRoutes.js";
 dotenv.config();
 // exercise
 const app = express();
@@ -31,6 +32,7 @@ app.use(onlineLearningRoutes);
 app.use(importantLinksRoutes);
 app.use(videoRoutes);
 app.use(courseEventRoutes);
+app.use(formsRoutes);
 
 const port = process.env.PORT || 8001;
 
