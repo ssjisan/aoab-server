@@ -9,6 +9,7 @@ import videoRoutes from "./routers/videoRoutes.js";
 import courseEventRoutes from "./routers/courseEventRoutes.js";
 import importantLinksRoutes from "./routers/importantLinksRoutes.js";
 import formsRoutes from "./routers/formsRoutes.js";
+import albumRoutes from "./routers/albumRoutes.js";
 dotenv.config();
 // exercise
 const app = express();
@@ -33,6 +34,8 @@ app.use(importantLinksRoutes);
 app.use(videoRoutes);
 app.use(courseEventRoutes);
 app.use(formsRoutes);
+app.use(formsRoutes);
+app.use(albumRoutes);
 
 const port = process.env.PORT || 8001;
 

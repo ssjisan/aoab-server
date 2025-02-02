@@ -68,12 +68,12 @@ export const loginUser = async (req, res) => {
     // 3. Check the email is taken or not
     const user = await UserModel.findOne({ email });
     if (!user) {
-      return res.json({ error: "User Not Found" });
+      return res.json({ error: "No account found" });
     }
     // 4. Hased the password
     const match = await comparePassword(password, user.password);
     if (!match) {
-      return res.json({ error: "Password wrong" });
+      return res.json({ error: "Wrong Password" });
     }
 
     // 5. Use JWT for auth
