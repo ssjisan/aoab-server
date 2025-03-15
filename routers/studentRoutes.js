@@ -7,10 +7,19 @@ const {
   forgotPassword,
   verifyOtpForReset,
   resetPassword,
-  getProfileData
 } = require("../controller/studentController.js");
+
+const {
+  getProfileData,
+  updateProfileImage,
+} = require("../controller/studentProfileController.js");
 const router = express.Router();
 const { requiredSignIn } = require("../middlewares/authMiddleware");
+const multer = require("multer");
+
+// Multer configuration
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Route to register a student
 router.post("/registration", registerStudent);
@@ -21,10 +30,15 @@ router.post("/forgot-password", forgotPassword);
 router.post("/verify-otp-for-reset", verifyOtpForReset);
 router.post("/reset-password", resetPassword);
 router.get("/my-profile-data", requiredSignIn, getProfileData);
+router.post(
+  "/update-profile-image",
+  requiredSignIn,
+  upload.single("picture"),
+  updateProfileImage
+);
 
 router.get("/auth-check", requiredSignIn, (req, res) => {
   res.json({ ok: true });
 });
-
 
 module.exports = router;

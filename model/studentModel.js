@@ -1,37 +1,5 @@
 const mongoose = require("mongoose");
 
-const SingleSupportDocumentSchema = new mongoose.Schema({
-  status: {
-    type: String,
-    enum: ["Yes", "No"],
-    required: true,
-  },
-  document: {
-    type: String, // Single document URL
-    required: function () {
-      return this.status === "Yes";
-    },
-  },
-});
-
-const MultiSupportDocumentSchema = new mongoose.Schema({
-  status: {
-    type: String,
-    enum: ["Yes", "No"],
-    required: true,
-  },
-  documents: {
-    type: [String], // Array of document URLs
-    validate: {
-      validator: function (docs) {
-        return this.status === "No" || (docs.length >= 1 && docs.length <= 5);
-      },
-      message:
-        "You must upload at least 1 and at most 5 documents if status is Yes.",
-    },
-  },
-});
-
 const StudentSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -44,7 +12,7 @@ const StudentSchema = new mongoose.Schema({
   },
   isBmdcVerified: {
     type: Boolean,
-    default: false, // Will be true after OTP verification
+    default: null, // Will be true after OTP verification
   },
   email: {
     type: String,
@@ -100,23 +68,143 @@ const StudentSchema = new mongoose.Schema({
       },
     },
   ],
+
   isAccountVerified: {
     type: Boolean,
     default: false, // Will be true after OTP verification
   },
-  // Fields that require only ONE document if status is "Yes"
-  aoBasicCourse: SingleSupportDocumentSchema,
-  aoAdvanceCourse: SingleSupportDocumentSchema,
-  aoMastersCourse: SingleSupportDocumentSchema,
-  aoaPediatricSeminar: SingleSupportDocumentSchema,
-  aoaPelvicSeminar: SingleSupportDocumentSchema,
-  aoaFootAnkleSeminar: SingleSupportDocumentSchema,
 
-  // Fields that allow multiple documents (1 to 5) if status is "Yes"
-  aoaOtherCourses: MultiSupportDocumentSchema,
-  aoaFellowship: MultiSupportDocumentSchema,
-  tableFaculty: MultiSupportDocumentSchema,
-  nationalFaculty: MultiSupportDocumentSchema,
+  // aoBasicCourse schema embedded inside StudentSchema
+  aoBasicCourse: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    document: [
+      {
+        url: { type: String, required: true }, // URL of the single document
+        public_id: { type: String, required: true }, // Public ID for the document
+      },
+    ],
+  },
+  aoAdvanceCourse: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    document: [
+      {
+        url: { type: String, required: true }, // URL of the single document
+        public_id: { type: String, required: true }, // Public ID for the document
+      },
+    ],
+  },
+  aoMastersCourse: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    document: [
+      {
+        url: { type: String, required: true }, // URL of the single document
+        public_id: { type: String, required: true }, // Public ID for the document
+      },
+    ],
+  },
+  aoaPediatricSeminar: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    document: [
+      {
+        url: { type: String, required: true }, // URL of the single document
+        public_id: { type: String, required: true }, // Public ID for the document
+      },
+    ],
+  },
+  aoaPelvicSeminar: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    document: [
+      {
+        url: { type: String, required: true }, // URL of the single document
+        public_id: { type: String, required: true }, // Public ID for the document
+      },
+    ],
+  },
+  aoaFootAnkleSeminar: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    document: [
+      {
+        url: { type: String, required: true }, // URL of the single document
+        public_id: { type: String, required: true }, // Public ID for the document
+      },
+    ],
+  },
+  aoaOtherCourses: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    documents: [
+      {
+        url: { type: String, required: true }, // URL of the document
+        public_id: { type: String, required: true }, // Public ID for each document
+      },
+    ],
+  },
+  aoaFellowship: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    documents: [
+      {
+        url: { type: String, required: true }, // URL of the document
+        public_id: { type: String, required: true }, // Public ID for each document
+      },
+    ],
+  },
+  tableFaculty: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    documents: [
+      {
+        url: { type: String, required: true }, // URL of the document
+        public_id: { type: String, required: true }, // Public ID for each document
+      },
+    ],
+  },
+  nationalFaculty: {
+    status: {
+      type: String,
+      enum: ["Yes", "No", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    documents: [
+      {
+        url: { type: String, required: true }, // URL of the document
+        public_id: { type: String, required: true }, // Public ID for each document
+      },
+    ],
+  },
 });
 
 module.exports = mongoose.model("Student", StudentSchema);
