@@ -12,6 +12,7 @@ const {
 const {
   getProfileData,
   updateProfileImage,
+  updateCourseDocument,
 } = require("../controller/studentProfileController.js");
 const router = express.Router();
 const { requiredSignIn } = require("../middlewares/authMiddleware");
@@ -36,7 +37,12 @@ router.post(
   upload.single("picture"),
   updateProfileImage
 );
-
+router.post(
+  "/update-course",
+  requiredSignIn,
+  upload.array("documents"), // Allow multiple file uploads
+  updateCourseDocument
+);
 router.get("/auth-check", requiredSignIn, (req, res) => {
   res.json({ ok: true });
 });

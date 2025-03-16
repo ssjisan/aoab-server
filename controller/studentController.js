@@ -55,7 +55,7 @@ const generateOtp = () => {
 
 // *************************************  Generate JWT Token  ************************************* //
 const generateToken = (student) => {
-  return jwt.sign({ id: student._id }, process.env.JWT_SECURE, {
+  return jwt.sign({ _id: student._id }, process.env.JWT_SECURE, {
     expiresIn: "7d",
   });
 };

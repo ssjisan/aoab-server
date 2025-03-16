@@ -78,10 +78,10 @@ const StudentSchema = new mongoose.Schema({
   aoBasicCourse: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
-    document: [
+    documents: [
       {
         url: { type: String, required: true }, // URL of the single document
         public_id: { type: String, required: true }, // Public ID for the document
@@ -91,10 +91,10 @@ const StudentSchema = new mongoose.Schema({
   aoAdvanceCourse: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
-    document: [
+    documents: [
       {
         url: { type: String, required: true }, // URL of the single document
         public_id: { type: String, required: true }, // Public ID for the document
@@ -104,10 +104,10 @@ const StudentSchema = new mongoose.Schema({
   aoMastersCourse: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
-    document: [
+    documents: [
       {
         url: { type: String, required: true }, // URL of the single document
         public_id: { type: String, required: true }, // Public ID for the document
@@ -117,10 +117,10 @@ const StudentSchema = new mongoose.Schema({
   aoaPediatricSeminar: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
-    document: [
+    documents: [
       {
         url: { type: String, required: true }, // URL of the single document
         public_id: { type: String, required: true }, // Public ID for the document
@@ -130,10 +130,10 @@ const StudentSchema = new mongoose.Schema({
   aoaPelvicSeminar: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
-    document: [
+    documents: [
       {
         url: { type: String, required: true }, // URL of the single document
         public_id: { type: String, required: true }, // Public ID for the document
@@ -143,10 +143,10 @@ const StudentSchema = new mongoose.Schema({
   aoaFootAnkleSeminar: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
-    document: [
+    documents: [
       {
         url: { type: String, required: true }, // URL of the single document
         public_id: { type: String, required: true }, // Public ID for the document
@@ -156,7 +156,7 @@ const StudentSchema = new mongoose.Schema({
   aoaOtherCourses: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
     documents: [
@@ -169,7 +169,7 @@ const StudentSchema = new mongoose.Schema({
   aoaFellowship: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
     documents: [
@@ -182,7 +182,7 @@ const StudentSchema = new mongoose.Schema({
   tableFaculty: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
     documents: [
@@ -195,7 +195,7 @@ const StudentSchema = new mongoose.Schema({
   nationalFaculty: {
     status: {
       type: String,
-      enum: ["Yes", "No", null], // Added null as a valid status
+      enum: ["yes", "no", null], // Added null as a valid status
       default: null, // Default to null
     },
     documents: [
