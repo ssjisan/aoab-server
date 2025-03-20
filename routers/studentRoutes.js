@@ -7,15 +7,24 @@ const {
   forgotPassword,
   verifyOtpForReset,
   resetPassword,
-} = require("../controller/studentController.js");
+  changeStudentPassword,
+} = require("../controller/studentAuthController.js");
 
 const {
   getProfileData,
   updateProfileImage,
   updateCourseDocument,
+  updateStudentDetails,
+  getUnverifiedStudents,
+  approveStudent,
+  getVerifiedStudents,
 } = require("../controller/studentProfileController.js");
 const router = express.Router();
-const { requiredSignIn } = require("../middlewares/authMiddleware");
+const {
+  requiredSignIn,
+  isModerator,
+  isSuperAdmin,
+} = require("../middlewares/authMiddleware");
 const multer = require("multer");
 
 // Multer configuration
@@ -31,6 +40,11 @@ router.post("/forgot-password", forgotPassword);
 router.post("/verify-otp-for-reset", verifyOtpForReset);
 router.post("/reset-password", resetPassword);
 router.get("/my-profile-data", requiredSignIn, getProfileData);
+router.put("/update-basic-info", requiredSignIn, updateStudentDetails);
+router.post("/change-student-password", requiredSignIn, changeStudentPassword);
+router.get("/unverified-accounts", requiredSignIn, getUnverifiedStudents);
+router.get("/verified-accounts", requiredSignIn, getVerifiedStudents);
+router.get("/approve/:studentId", requiredSignIn, approveStudent);
 router.post(
   "/update-profile-image",
   requiredSignIn,

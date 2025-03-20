@@ -45,10 +45,14 @@ const uploadImageToCloudinary = async (imageBuffer) => {
 
 const uploadPdfToCloudinary = async (pdfBuffer, studentName) => {
   return new Promise((resolve, reject) => {
-    const folderPath = `aoa-bd/documents/${studentName.replace(/\s+/g, "_")}`; // Replace spaces with underscores for folder name
+    const sanitizedStudentName = studentName.replace(/\s+/g, "_"); // Replace spaces with underscores
+    const timestamp = Date.now(); // Unique timestamp
+    const uniqueFilename = `document_${timestamp}`; // Ensuring unique file name
+
+    const folderPath = `aoa-bd/documents/${sanitizedStudentName}`;
 
     const stream = cloudinary.uploader.upload_stream(
-      { folder: folderPath, resource_type: "raw" }, // Set folder dynamically
+      { folder: folderPath, public_id: uniqueFilename, resource_type: "raw" }, // Set unique file name
       (error, result) => {
         if (error) reject(error);
         else resolve({ url: result.secure_url, public_id: result.public_id });
@@ -167,10 +171,13 @@ const updateProfileImage = async (req, res) => {
 const updateCourseDocument = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { fieldName, status } = req.body; // Expecting a field name like "aoBasicCourse"
-    const pdfFiles = req.files; // This will be an array if using upload.array("documents")
-    console.log("Request Body:", req.body); // Logs fieldName and status
-    console.log("Uploaded Files:", pdfFiles); // Logs files received by multer
+    const { fieldName, status, removeFileId, removedFiles, completionYear } =
+      req.body; // Capture removeFileId
+    const pdfFiles = req.files;
+
+    console.log("Request Body:", req.body);
+    console.log("Uploaded Files:", pdfFiles);
+    console.log("File to Remove:", removedFiles);
 
     if (!fieldName) {
       return res.status(400).json({ error: "Field name is required" });
@@ -181,17 +188,76 @@ const updateCourseDocument = async (req, res) => {
       return res.status(404).json({ error: "User profile not found" });
     }
 
-    // Ensure the field exists in the schema
     if (!(fieldName in studentProfile)) {
       return res.status(400).json({ error: "Invalid field name" });
     }
 
-    // Update status if provided
-    if (status) {
-      studentProfile[fieldName].status = status;
+    if (removedFiles && removedFiles.length > 0) {
+      for (const removeFileId of removedFiles) {
+        console.log("Removing file with public_id:", removeFileId); // Debugging removeFileId
+
+        const docIndex = studentProfile[fieldName].documents.findIndex(
+          (doc) => doc.public_id === removeFileId
+        );
+
+        if (docIndex !== -1) {
+          console.log(
+            "Found document to remove:",
+            studentProfile[fieldName].documents[docIndex]
+          );
+
+          // Delete the file from Cloudinary
+          try {
+            await deletePdfFromCloudinary(removeFileId);
+            console.log("Deleted file from Cloudinary:", removeFileId); // Debugging Cloudinary delete success
+          } catch (err) {
+            console.error("Error deleting file from Cloudinary:", err); // Debugging Cloudinary delete failure
+            return res.status(500).json({
+              error: "Failed to delete document from Cloudinary",
+              details: err.message,
+            });
+          }
+
+          // Remove file from the documents array in the database
+          studentProfile[fieldName].documents.splice(docIndex, 1);
+          console.log(
+            "Updated documents array after removal:",
+            studentProfile[fieldName].documents
+          ); // Debugging documents after removal
+        } else {
+          console.log("No document found with public_id:", removeFileId); // Debugging when document is not found
+        }
+      }
     }
 
-    // Determine whether the field allows multiple files
+    // Remove files from Cloudinary if status is "no" and there are documents to remove
+    if (status === "no") {
+      if (studentProfile[fieldName].documents.length > 0) {
+        for (let doc of studentProfile[fieldName].documents) {
+          await deletePdfFromCloudinary(doc.public_id);
+        }
+        studentProfile[fieldName].documents = [];
+      }
+      studentProfile[fieldName].status = "no";
+      studentProfile[fieldName].completionYear = null;
+      await studentProfile.save();
+      return res
+        .status(200)
+        .json({ message: "Documents deleted successfully", studentProfile });
+    }
+
+    // ✅ If "Yes" is selected, document upload is mandatory
+    if (
+      status === "yes" &&
+      (!pdfFiles || pdfFiles.length === 0) &&
+      studentProfile[fieldName].documents.length === 0
+    ) {
+      return res.status(400).json({
+        error: "You must upload at least one document when selecting 'Yes'.",
+      });
+    }
+
+    // ✅ Define which labels allow multiple files
     const isMultipleFilesAllowed = [
       "aoaOtherCourses",
       "aoaFellowship",
@@ -199,46 +265,81 @@ const updateCourseDocument = async (req, res) => {
       "nationalFaculty",
     ].includes(fieldName);
 
+    // ✅ Validate File Size
+    let totalSize = studentProfile[fieldName].documents.reduce(
+      (acc, file) => acc + file.size,
+      0
+    );
     if (pdfFiles && pdfFiles.length > 0) {
+      totalSize += pdfFiles.reduce((acc, file) => acc + file.size, 0);
+    }
+
+    if (
+      !isMultipleFilesAllowed &&
+      pdfFiles.length > 0 &&
+      pdfFiles[0].size > 1024 * 1024
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Single file size must not exceed 1MB." });
+    }
+
+    if (isMultipleFilesAllowed && totalSize > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        error: "Each file must be max 1MB, and total must not exceed 5MB.",
+      });
+    }
+
+    // ✅ Upload New Files and Replace Old Ones
+    if (pdfFiles.length > 0) {
       let uploadedPdf;
       try {
-        // If the field allows only one file (aoBasicCourse, aoAdvanceCourse, aoMastersCourse, etc.)
         if (!isMultipleFilesAllowed) {
-          // Delete the previous document from Cloudinary if it's there
+          // Delete old document before replacing it
           if (studentProfile[fieldName].documents.length > 0) {
             const oldDocument = studentProfile[fieldName].documents[0];
-            await deletePdfFromCloudinary(oldDocument.public_id); // Assuming you have this function to delete the old document
+            await deletePdfFromCloudinary(oldDocument.public_id);
           }
 
-          // Upload the new file to Cloudinary
+          // Upload new file
           uploadedPdf = await uploadPdfToCloudinary(
             pdfFiles[0].buffer,
             studentProfile.name
           );
-
-          // Replace the document with the new one (only one document is allowed)
           studentProfile[fieldName].documents = [
             {
               url: uploadedPdf.url,
               public_id: uploadedPdf.public_id,
+              name: pdfFiles[0].originalname,
+              size: pdfFiles[0].size,
             },
           ];
         } else {
-          // If the field allows multiple files, add them to the documents array
+          // Check if we are exceeding max limit (5 files)
+          if (
+            studentProfile[fieldName].documents.length + pdfFiles.length >
+            5
+          ) {
+            return res
+              .status(400)
+              .json({ error: "You can upload a maximum of 5 documents." });
+          }
+
           for (let file of pdfFiles) {
             uploadedPdf = await uploadPdfToCloudinary(
               file.buffer,
               studentProfile.name
             );
-
             studentProfile[fieldName].documents.push({
               url: uploadedPdf.url,
               public_id: uploadedPdf.public_id,
+              name: file.originalname,
+              size: file.size,
             });
           }
         }
       } catch (err) {
-        console.log(err.message);
+        console.error("Error uploading document:", err.message);
         return res.status(500).json({
           error: "Failed to upload PDF document",
           details: err.message,
@@ -246,15 +347,181 @@ const updateCourseDocument = async (req, res) => {
       }
     }
 
-    // Save the updated profile
+    // ✅ Update Status
+    studentProfile[fieldName].status = "yes";
+    if (completionYear) {
+      studentProfile[fieldName].completionYear = completionYear; // Update completionYear if provided
+    }
     await studentProfile.save();
 
     res.status(200).json(studentProfile);
   } catch (err) {
-    console.error("Error updating course document:", err); // Detailed logging
+    console.error("Error updating course document:", err);
     res
       .status(500)
       .json({ message: "Error updating course document", error: err.message });
+  }
+};
+
+// ************************************************** Upload PDF & Update Status ************************************************** //
+
+// ************************************************** Update Student Profile Data ************************************************** //
+const updateStudentDetails = async (req, res) => {
+  try {
+    const studentId = req.user._id;
+    let updateData = req.body;
+    console.log("Request Body:", updateData);
+    console.log("studentId:", studentId);
+
+    // Find the student by ID
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Check for duplicate email (if email is being updated)
+    if (updateData.email && updateData.email !== student.email) {
+      const existingEmail = await Student.findOne({ email: updateData.email });
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email is already in use." });
+      }
+    }
+
+    // Check for duplicate BMDC number (if being updated)
+    if (updateData.bmdcNo && updateData.bmdcNo !== student.bmdcNo) {
+      const existingBmdc = await Student.findOne({ bmdcNo: updateData.bmdcNo });
+      if (existingBmdc) {
+        return res
+          .status(400)
+          .json({ message: "BMDC number is already in use." });
+      }
+    }
+
+    // Check for duplicate contact number (if being updated)
+    if (
+      updateData.contactNumber &&
+      updateData.contactNumber !== student.contactNumber
+    ) {
+      const existingContact = await Student.findOne({
+        contactNumber: updateData.contactNumber,
+      });
+      if (existingContact) {
+        return res
+          .status(400)
+          .json({ message: "Contact number is already in use." });
+      }
+    }
+
+    // Prevent updates to `name` and `bmdcNo` if BMDC is verified
+    if (student.isBmdcVerified) {
+      delete updateData.name; // Prevent name change
+      delete updateData.bmdcNo; // Prevent BMDC number change
+    }
+
+    // Update the student document with the allowed fields
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      updateData,
+      { new: true }
+    );
+
+    res.status(200).json({
+      message: "Student details updated successfully",
+      student: updatedStudent,
+    });
+  } catch (error) {
+    console.error("Error updating student details:", error);
+
+    // Handle MongoDB duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0]; // Get the duplicate field
+      return res.status(400).json({ message: `${field} is already in use.` });
+    }
+
+    res.status(500).json({
+      message: "Error updating student details",
+      error: error.message,
+    });
+  }
+};
+
+// Is AccountVerified Data list //
+const getUnverifiedStudents = async (req, res) => {
+  try {
+    const unverifiedStudents = await Student.find({ isAccountVerified: false });
+    res.json(unverifiedStudents);
+  } catch (error) {
+    res.json("Error fetching unverified students:", error);
+  }
+};
+
+// True account verified data
+const getVerifiedStudents = async (req, res) => {
+  try {
+    const { label, status } = req.query;
+
+    const query = { isAccountVerified: true };
+    
+    const validLabels = [
+      "aoBasicCourse",
+      "aoAdvanceCourse",
+      "aoMastersCourse",
+      "aoaPediatricSeminar",
+      "aoaPelvicSeminar",
+      "aoaFootAnkleSeminar",
+      "aoPeer",
+      "aoaOtherCourses",
+      "aoaFellowship",
+      "tableFaculty",
+      "nationalFaculty",
+    ];
+    
+    if (label && validLabels.includes(label)) {
+      if (status === "yes" || status === "no") {
+        query[`${label}.status`] = status;
+      } else {
+        query[`${label}.status`] = { $exists: true }; // Includes fields with any value (null included)
+      }
+    }
+    console.log("Final",query);
+
+    const verifiedStudents = await Student.find(query);
+
+    if (verifiedStudents.length === 0) {
+      return res.status(200).json([]); // Return empty array with a successful status code
+    }
+
+    res.json(verifiedStudents);
+  } catch (error) {
+    console.error("Error fetching verified students:", error);
+    res.status(500).json({ message: "Error fetching verified students" });
+  }
+};
+
+// Controlel for approve student //
+const approveStudent = async (req, res) => {
+  const { studentId } = req.params; // Expecting studentId in the URL
+
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      {
+        isAccountVerified: true,
+        isBmdcVerified: true,
+        remarks: null,
+      },
+      { new: true } // This option ensures the updated document is returned
+    );
+
+    if (!updatedStudent) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    console.log("Student Approved:", updatedStudent);
+    res.json(updatedStudent);
+  } catch (error) {
+    console.error("Error approving student:", error);
+    res.status(500).json({ message: "Error approving student" });
   }
 };
 
@@ -262,4 +529,8 @@ module.exports = {
   getProfileData,
   updateProfileImage,
   updateCourseDocument,
+  updateStudentDetails,
+  getUnverifiedStudents,
+  approveStudent,
+  getVerifiedStudents,
 };

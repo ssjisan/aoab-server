@@ -7,7 +7,6 @@ const cloudinary = require("cloudinary").v2;
 
 dotenv.config();
 
-
 const { CLOUD_NAME, API_KEY, API_SECRET } = process.env;
 
 if (!CLOUD_NAME || !API_KEY || !API_SECRET) {
@@ -46,7 +45,6 @@ const uploadImageToCloudinary = async (imageBuffer) => {
 };
 
 // ********************************************** The Cloudinary upload function end here ********************************************** //
-
 
 // ************************************* Function to generate a random 6-digit OTP *************************************  //
 const generateOtp = () => {
@@ -435,7 +433,6 @@ const getProfileData = async (req, res) => {
 
 const updateProfileImage = async (req, res) => {
   try {
-
     // Get the user ID from the verified JWT token
     const userId = req.user.id;
 
@@ -485,10 +482,62 @@ const updateProfileImage = async (req, res) => {
     res.status(200).json(studentProfile);
   } catch (err) {
     console.error("Error updating profile image:", err);
-    res.status(500).json({ message: "Error updating profile image", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error updating profile image", error: err.message });
   }
 };
 
+// ******************************************* Password Chnage **********************************************************//
+
+const changeStudentPassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    const studentId = req.user._id; // Extracting user ID from request
+
+    // 1. Validate input fields
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    // 2. Find student by ID
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found." });
+    }
+
+    // 3. Check if old password is correct
+    const isMatch = await comparePassword(oldPassword, student.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Old password is incorrect." });
+    }
+
+    // 4. Check if new password matches confirmation
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "New password and confirm password must match." });
+    }
+
+    // 5. Validate new password strength
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters long, contain at least one number, and one special character.",
+      });
+    }
+
+    // 6. Hash new password
+    const hashedNewPassword = await hashPassword(newPassword);
+
+    // 7. Save new password
+    student.password = hashedNewPassword;
+    await student.save();
+
+    res.status(200).json({ message: "Password changed successfully." });
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    res.status(500).json({ message: "Server error. Please try again later." });
+  }
+};
 
 module.exports = {
   registerStudent,
@@ -499,5 +548,6 @@ module.exports = {
   verifyOtpForReset,
   resetPassword,
   getProfileData,
-  updateProfileImage
+  updateProfileImage,
+  changeStudentPassword
 };

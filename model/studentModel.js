@@ -83,10 +83,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the single document
-        public_id: { type: String, required: true }, // Public ID for the document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   aoAdvanceCourse: {
     status: {
@@ -96,10 +101,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the single document
-        public_id: { type: String, required: true }, // Public ID for the document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   aoMastersCourse: {
     status: {
@@ -109,10 +119,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the single document
-        public_id: { type: String, required: true }, // Public ID for the document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   aoaPediatricSeminar: {
     status: {
@@ -122,10 +137,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the single document
-        public_id: { type: String, required: true }, // Public ID for the document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   aoaPelvicSeminar: {
     status: {
@@ -135,10 +155,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the single document
-        public_id: { type: String, required: true }, // Public ID for the document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   aoaFootAnkleSeminar: {
     status: {
@@ -148,10 +173,33 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the single document
-        public_id: { type: String, required: true }, // Public ID for the document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
+  },
+  aoPeer: {
+    status: {
+      type: String,
+      enum: ["yes", "no", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    documents: [
+      {
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
+      },
+    ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   aoaOtherCourses: {
     status: {
@@ -161,10 +209,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the document
-        public_id: { type: String, required: true }, // Public ID for each document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   aoaFellowship: {
     status: {
@@ -174,10 +227,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the document
-        public_id: { type: String, required: true }, // Public ID for each document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   tableFaculty: {
     status: {
@@ -187,10 +245,15 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the document
-        public_id: { type: String, required: true }, // Public ID for each document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
   },
   nationalFaculty: {
     status: {
@@ -200,10 +263,19 @@ const StudentSchema = new mongoose.Schema({
     },
     documents: [
       {
-        url: { type: String, required: true }, // URL of the document
-        public_id: { type: String, required: true }, // Public ID for each document
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
       },
     ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
+  },
+  remarks: {
+    type: String,
+    default: null,
   },
 });
 

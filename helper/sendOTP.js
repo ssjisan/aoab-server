@@ -12,9 +12,16 @@ require("dotenv").config();
 //   },
 // });
 
+// Test Email
+// transporter.verify((error, success) => {
+//   if (error) {
+//     console.error("SMTP Error:", error);
+//   } else {
+//     console.log("SMTP Connection Successful!");
+//   }
+// });
 
- // Configure Nodemailer transporter
- const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
@@ -22,10 +29,8 @@ require("dotenv").config();
   },
 });
 
-
 // Helper to send OTP email
 const sendOtp = async (email, otp) => {
-  
   const mailOptions = {
     from: {
       name: "AOA-Bangladesh",
