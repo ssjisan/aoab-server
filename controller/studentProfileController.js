@@ -103,6 +103,26 @@ const getProfileData = async (req, res) => {
   }
 };
 
+const getStudentProfileByAdmin = async (req, res) => {
+  try {
+    // Extract studentId from the request parameters
+    const { studentId } = req.params;
+
+    // Fetch the student's profile using the ID
+    const studentProfile = await Student.findById(studentId);
+
+    if (!studentProfile) {
+      return res.status(404).json({ message: "Student profile not found" });
+    }
+
+    // Return the student profile data
+    res.json(studentProfile);
+  } catch (err) {
+    console.error("Error fetching student profile:", err);
+    res.status(500).json({ message: "Error fetching student profile", error: err.message });
+  }
+};
+
 // ********************************************** Get Profile Data function end here ********************************************** //
 
 // ********************************************** Update Profile Photo function start here ********************************************** //
@@ -445,7 +465,7 @@ const updateStudentDetails = async (req, res) => {
   }
 };
 
-// Is AccountVerified Data list //
+// ************************************************** Is AccountVerified Data list ************************************************** //
 const getUnverifiedStudents = async (req, res) => {
   try {
     const unverifiedStudents = await Student.find({ isAccountVerified: false });
@@ -455,13 +475,13 @@ const getUnverifiedStudents = async (req, res) => {
   }
 };
 
-// True account verified data
+// ************************************************** True account verified data ************************************************** //
 const getVerifiedStudents = async (req, res) => {
   try {
     const { label, status } = req.query;
 
     const query = { isAccountVerified: true };
-    
+
     const validLabels = [
       "aoBasicCourse",
       "aoAdvanceCourse",
@@ -475,7 +495,7 @@ const getVerifiedStudents = async (req, res) => {
       "tableFaculty",
       "nationalFaculty",
     ];
-    
+
     if (label && validLabels.includes(label)) {
       if (status === "yes" || status === "no") {
         query[`${label}.status`] = status;
@@ -483,7 +503,7 @@ const getVerifiedStudents = async (req, res) => {
         query[`${label}.status`] = { $exists: true }; // Includes fields with any value (null included)
       }
     }
-    console.log("Final",query);
+    console.log("Final", query);
 
     const verifiedStudents = await Student.find(query);
 
@@ -498,7 +518,7 @@ const getVerifiedStudents = async (req, res) => {
   }
 };
 
-// Controlel for approve student //
+// ************************************************** Controlel for approve student ************************************************** //
 const approveStudent = async (req, res) => {
   const { studentId } = req.params; // Expecting studentId in the URL
 
@@ -525,6 +545,42 @@ const approveStudent = async (req, res) => {
   }
 };
 
+// ************************************************** Controlel for deny student ************************************************** //
+const denyStudent = async (req, res) => {
+  const { studentId } = req.params;
+  const { remarks } = req.body;
+  console.log(studentId);
+  console.log(remarks);
+  
+  // Validate that remarks are provided
+  if (!remarks || remarks.trim() === "") {
+    return res.status(400).json({ message: "Remarks are required" });
+  }
+
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      {
+        isAccountVerified: false,
+        isBmdcVerified: null,
+        remarks,
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedStudent) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    console.log("Student Denied:", updatedStudent);
+    res.json(updatedStudent);
+  } catch (error) {
+    console.error("Error denying student:", error);
+    res.status(500).json({ message: "Error denying student" });
+  }
+};
+
+
 module.exports = {
   getProfileData,
   updateProfileImage,
@@ -533,4 +589,6 @@ module.exports = {
   getUnverifiedStudents,
   approveStudent,
   getVerifiedStudents,
+  denyStudent,
+  getStudentProfileByAdmin
 };

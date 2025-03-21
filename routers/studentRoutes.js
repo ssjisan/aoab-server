@@ -18,6 +18,8 @@ const {
   getUnverifiedStudents,
   approveStudent,
   getVerifiedStudents,
+  denyStudent,
+  getStudentProfileByAdmin
 } = require("../controller/studentProfileController.js");
 const router = express.Router();
 const {
@@ -45,6 +47,9 @@ router.post("/change-student-password", requiredSignIn, changeStudentPassword);
 router.get("/unverified-accounts", requiredSignIn, getUnverifiedStudents);
 router.get("/verified-accounts", requiredSignIn, getVerifiedStudents);
 router.get("/approve/:studentId", requiredSignIn, approveStudent);
+router.put("/deny/:studentId", requiredSignIn, denyStudent);
+router.get("/student/:studentId", requiredSignIn, getStudentProfileByAdmin); // ✅ New API for Admin
+
 router.post(
   "/update-profile-image",
   requiredSignIn,
