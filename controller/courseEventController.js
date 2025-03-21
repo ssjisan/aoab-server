@@ -198,9 +198,14 @@ exports.getFilteredCoursesEvents = async (req, res) => {
 
     // Build query based on status
     if (status === "archived") {
-      query = { endDate: { $lt: currentDate } }; // Archived events
+      query = { endDate: { $lt: currentDate } }; // Archived events (endDate < currentDate)
     } else if (status === "running") {
-      query = { endDate: { $gte: currentDate } }; // Running events
+      query = { 
+        $or: [
+          { endDate: { $gte: currentDate } }, // Running events where endDate is in the future
+          { endDate: { $exists: false } } // Events without an endDate (still running)
+        ]
+      };
     }
 
     // Fetch filtered and paginated courses/events
@@ -220,6 +225,7 @@ exports.getFilteredCoursesEvents = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // For Delete Event or Course //
 exports.deleteCourseEvent = async (req, res) => {

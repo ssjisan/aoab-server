@@ -60,11 +60,9 @@ const StudentSchema = new mongoose.Schema({
     {
       degreeName: {
         type: String,
-        required: true,
       },
       yearOfGraduation: {
         type: Number,
-        required: true,
       },
     },
   ],
@@ -256,6 +254,24 @@ const StudentSchema = new mongoose.Schema({
     },
   },
   nationalFaculty: {
+    status: {
+      type: String,
+      enum: ["yes", "no", null], // Added null as a valid status
+      default: null, // Default to null
+    },
+    documents: [
+      {
+        url: { type: String, required: true }, // File URL
+        public_id: { type: String, required: true }, // Cloudinary Public ID
+        name: { type: String, required: true }, // Original file name
+        size: { type: Number, required: true }, // File size in bytes
+      },
+    ],
+    completionYear: {
+      type: String, // This stores the full date (you can set it to the first day of the month)
+    },
+  },
+  regionalFaculty: {
     status: {
       type: String,
       enum: ["yes", "no", null], // Added null as a valid status

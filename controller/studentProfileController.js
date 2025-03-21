@@ -43,13 +43,13 @@ const uploadImageToCloudinary = async (imageBuffer) => {
 
 // ********************************************** Upload PDF to Cloudinary ********************************************** //
 
-const uploadPdfToCloudinary = async (pdfBuffer, studentName) => {
+const uploadPdfToCloudinary = async (pdfBuffer, studentName, bmdcNo) => {
   return new Promise((resolve, reject) => {
     const sanitizedStudentName = studentName.replace(/\s+/g, "_"); // Replace spaces with underscores
     const timestamp = Date.now(); // Unique timestamp
     const uniqueFilename = `document_${timestamp}`; // Ensuring unique file name
-
-    const folderPath = `aoa-bd/documents/${sanitizedStudentName}`;
+    const sanitizedBdmcNo = bmdcNo.replace(/\s+/g, "_");
+    const folderPath = `aoa-bd/documents/${sanitizedStudentName}_${sanitizedBdmcNo}`;
 
     const stream = cloudinary.uploader.upload_stream(
       { folder: folderPath, public_id: uniqueFilename, resource_type: "raw" }, // Set unique file name
@@ -283,6 +283,7 @@ const updateCourseDocument = async (req, res) => {
       "aoaFellowship",
       "tableFaculty",
       "nationalFaculty",
+      "regionalFaculty"
     ].includes(fieldName);
 
     // ✅ Validate File Size
@@ -324,7 +325,8 @@ const updateCourseDocument = async (req, res) => {
           // Upload new file
           uploadedPdf = await uploadPdfToCloudinary(
             pdfFiles[0].buffer,
-            studentProfile.name
+            studentProfile.name,
+            studentProfile.bmdcNo,
           );
           studentProfile[fieldName].documents = [
             {
@@ -348,7 +350,8 @@ const updateCourseDocument = async (req, res) => {
           for (let file of pdfFiles) {
             uploadedPdf = await uploadPdfToCloudinary(
               file.buffer,
-              studentProfile.name
+              studentProfile.name,
+              studentProfile.bmdcNo
             );
             studentProfile[fieldName].documents.push({
               url: uploadedPdf.url,
@@ -391,7 +394,6 @@ const updateStudentDetails = async (req, res) => {
     const studentId = req.user._id;
     let updateData = req.body;
     console.log("Request Body:", updateData);
-    console.log("studentId:", studentId);
 
     // Find the student by ID
     const student = await Student.findById(studentId);
@@ -476,6 +478,7 @@ const getUnverifiedStudents = async (req, res) => {
 };
 
 // ************************************************** True account verified data ************************************************** //
+
 const getVerifiedStudents = async (req, res) => {
   try {
     const { label, status } = req.query;
@@ -494,6 +497,7 @@ const getVerifiedStudents = async (req, res) => {
       "aoaFellowship",
       "tableFaculty",
       "nationalFaculty",
+      "regionalFaculty"
     ];
 
     if (label && validLabels.includes(label)) {
@@ -519,6 +523,7 @@ const getVerifiedStudents = async (req, res) => {
 };
 
 // ************************************************** Controlel for approve student ************************************************** //
+
 const approveStudent = async (req, res) => {
   const { studentId } = req.params; // Expecting studentId in the URL
 
