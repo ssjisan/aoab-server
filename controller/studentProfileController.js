@@ -281,9 +281,10 @@ const updateCourseDocument = async (req, res) => {
     const isMultipleFilesAllowed = [
       "aoaOtherCourses",
       "aoaFellowship",
+      "aoNonOperativeCourse",
       "tableFaculty",
       "nationalFaculty",
-      "regionalFaculty"
+      "regionalFaculty",
     ].includes(fieldName);
 
     // ✅ Validate File Size

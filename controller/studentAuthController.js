@@ -62,23 +62,17 @@ const generateToken = (student) => {
 
 const registerStudent = async (req, res) => {
   try {
-    // 1. destruct the elements
+    // 1. Destructure request body
     const { name, bmdcNo, email, contactNumber, password, confirmPassword } =
       req.body;
 
     // 2. Validate inputs
-    if (!name.trim()) {
-      return res.json({ error: "Name is required" });
-    }
-    if (!bmdcNo) {
+    if (!name.trim()) return res.json({ error: "Name is required" });
+    if (!bmdcNo)
       return res.json({ error: "BM&DC Registration No is required" });
-    }
-    if (!email) {
-      return res.json({ error: "Email is required" });
-    }
-    if (!contactNumber) {
+    if (!email) return res.json({ error: "Email is required" });
+    if (!contactNumber)
       return res.json({ error: "Contact number is required" });
-    }
     if (!password || password.length < 8) {
       return res.json({ error: "Password should be longer than 8 characters" });
     }
@@ -86,25 +80,21 @@ const registerStudent = async (req, res) => {
       return res.json({ error: "Password and confirm password must match" });
     }
 
-    // 3. Check if the email or contact number is already taken
+    // 3. Check if the BM&DC No, email, or contact number is already taken
     const existingBmdc = await Student.findOne({ bmdcNo });
-    if (existingBmdc) {
+    if (existingBmdc)
       return res.json({ error: "BM&DC Registration No is already registered" });
-    }
-    const existingStudent = await Student.findOne({ email });
-    if (existingStudent) {
-      return res.json({ error: "Email is already taken" });
-    }
-    const existingContact = await Student.findOne({ contactNumber });
-    if (existingContact) {
-      return res.json({ error: "Contact number is already registered" });
-    }
 
-    // 4. Hash the password
-    const hashedPassword = await hashPassword(password);
-    // 5. Password validation: Minimum 8 characters, 1 number, 1 special character
+    const existingStudent = await Student.findOne({ email });
+    if (existingStudent) return res.json({ error: "Email is already taken" });
+
+    const existingContact = await Student.findOne({ contactNumber });
+    if (existingContact)
+      return res.json({ error: "Contact number is already registered" });
+
+    // 4. Password validation: Minimum 8 characters, 1 number, 1 special character
     const passwordRegex =
-      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/; //
+      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
         message:
@@ -112,28 +102,35 @@ const registerStudent = async (req, res) => {
       });
     }
 
-    // 6. Create the student in the Student collection
+    // 5. Generate OTP
+    const otp = generateOtp();
+    const otpExpiration = new Date(Date.now() + 2 * 60 * 1000); // OTP expires in 2 minutes
+
+    // 6. Send OTP to email before saving student data
+    try {
+      await sendOtp(email, otp); // Attempt to send OTP email
+    } catch (emailError) {
+      console.error("Error sending OTP email:", emailError);
+      return res
+        .status(500)
+        .json({ error: "Failed to send OTP. Please try again later." });
+    }
+
+    // 7. Hash the password
+    const hashedPassword = await hashPassword(password);
+
+    // 8. Create student object and save it only if OTP email was sent successfully
     const newStudent = await new Student({
       name,
       bmdcNo,
       email,
       contactNumber,
       password: hashedPassword,
+      otp: otp.toString(), // Store OTP
+      otpExpiration: otpExpiration,
     }).save();
 
-    // 7. Generate OTP and set expiration time
-    const otp = generateOtp();
-    const otpExpiration = new Date(Date.now() + 2 * 60 * 1000); // OTP expiration time set to 2 minutes
-
-    // Save the OTP and expiration time in the student's record
-    newStudent.otp = otp.toString();
-    newStudent.otpExpiration = otpExpiration;
-    await newStudent.save();
-
-    // 8. Send OTP to the student's email
-    await sendOtp(email, otp); // Sending OTP to student's email
-
-    // 9. Return the response with the student details and message
+    // 9. Return success response
     res.json({
       newStudent: {
         name: newStudent.name,
@@ -144,7 +141,7 @@ const registerStudent = async (req, res) => {
       message: "Please check your email for the OTP to verify your account.",
     });
   } catch (err) {
-    console.log(err);
+    console.log("Error registering student:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -514,14 +511,18 @@ const changeStudentPassword = async (req, res) => {
 
     // 4. Check if new password matches confirmation
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({ message: "New password and confirm password must match." });
+      return res
+        .status(400)
+        .json({ message: "New password and confirm password must match." });
     }
 
     // 5. Validate new password strength
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+    const passwordRegex =
+      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        message: "Password must be at least 8 characters long, contain at least one number, and one special character.",
+        message:
+          "Password must be at least 8 characters long, contain at least one number, and one special character.",
       });
     }
 
@@ -549,5 +550,5 @@ module.exports = {
   resetPassword,
   getProfileData,
   updateProfileImage,
-  changeStudentPassword
+  changeStudentPassword,
 };
