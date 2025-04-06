@@ -119,7 +119,9 @@ const getStudentProfileByAdmin = async (req, res) => {
     res.json(studentProfile);
   } catch (err) {
     console.error("Error fetching student profile:", err);
-    res.status(500).json({ message: "Error fetching student profile", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching student profile", error: err.message });
   }
 };
 
@@ -192,7 +194,7 @@ const updateCourseDocument = async (req, res) => {
   try {
     const userId = req.user._id;
     const { fieldName, status, removeFileId, removedFiles, completionYear } =
-      req.body; // Capture removeFileId
+      req.body;
     const pdfFiles = req.files;
 
     console.log("Request Body:", req.body);
@@ -214,43 +216,36 @@ const updateCourseDocument = async (req, res) => {
 
     if (removedFiles && removedFiles.length > 0) {
       for (const removeFileId of removedFiles) {
-        console.log("Removing file with public_id:", removeFileId); // Debugging removeFileId
+        console.log("Removing file with public_id:", removeFileId);
 
         const docIndex = studentProfile[fieldName].documents.findIndex(
           (doc) => doc.public_id === removeFileId
         );
 
         if (docIndex !== -1) {
-          console.log(
-            "Found document to remove:",
-            studentProfile[fieldName].documents[docIndex]
-          );
-
-          // Delete the file from Cloudinary
           try {
             await deletePdfFromCloudinary(removeFileId);
-            console.log("Deleted file from Cloudinary:", removeFileId); // Debugging Cloudinary delete success
+            console.log("Deleted file from Cloudinary:", removeFileId);
           } catch (err) {
-            console.error("Error deleting file from Cloudinary:", err); // Debugging Cloudinary delete failure
+            console.error("Error deleting file from Cloudinary:", err);
             return res.status(500).json({
               error: "Failed to delete document from Cloudinary",
               details: err.message,
             });
           }
 
-          // Remove file from the documents array in the database
           studentProfile[fieldName].documents.splice(docIndex, 1);
           console.log(
             "Updated documents array after removal:",
             studentProfile[fieldName].documents
-          ); // Debugging documents after removal
+          );
         } else {
-          console.log("No document found with public_id:", removeFileId); // Debugging when document is not found
+          console.log("No document found with public_id:", removeFileId);
         }
       }
     }
 
-    // Remove files from Cloudinary if status is "no" and there are documents to remove
+    // ✅ If status is "no", delete all existing documents
     if (status === "no") {
       if (studentProfile[fieldName].documents.length > 0) {
         for (let doc of studentProfile[fieldName].documents) {
@@ -266,7 +261,7 @@ const updateCourseDocument = async (req, res) => {
         .json({ message: "Documents deleted successfully", studentProfile });
     }
 
-    // ✅ If "Yes" is selected, document upload is mandatory
+    // ✅ Check for required documents and completion year when status is 'yes'
     if (
       status === "yes" &&
       (!pdfFiles || pdfFiles.length === 0) &&
@@ -277,7 +272,13 @@ const updateCourseDocument = async (req, res) => {
       });
     }
 
-    // ✅ Define which labels allow multiple files
+    if (status === "yes" && !completionYear) {
+      return res.status(400).json({
+        error: "Completion year is required when selecting 'Yes'.",
+      });
+    }
+
+    // ✅ Define allowed fields for multiple files
     const isMultipleFilesAllowed = [
       "aoaOtherCourses",
       "aoaFellowship",
@@ -287,7 +288,7 @@ const updateCourseDocument = async (req, res) => {
       "regionalFaculty",
     ].includes(fieldName);
 
-    // ✅ Validate File Size
+    // ✅ Validate total file size
     let totalSize = studentProfile[fieldName].documents.reduce(
       (acc, file) => acc + file.size,
       0
@@ -312,22 +313,33 @@ const updateCourseDocument = async (req, res) => {
       });
     }
 
-    // ✅ Upload New Files and Replace Old Ones
+    // ✅ Reject files that are not PDF (added this block)
+    if (pdfFiles && pdfFiles.length > 0) {
+      const invalidFiles = pdfFiles.filter(
+        (file) => file.mimetype !== "application/pdf"
+      );
+      if (invalidFiles.length > 0) {
+        return res.status(400).json({
+          error: "Only PDF files are allowed.",
+          invalidFiles: invalidFiles.map((file) => file.originalname),
+        });
+      }
+    }
+
+    // ✅ Upload New Files
     if (pdfFiles.length > 0) {
       let uploadedPdf;
       try {
         if (!isMultipleFilesAllowed) {
-          // Delete old document before replacing it
           if (studentProfile[fieldName].documents.length > 0) {
             const oldDocument = studentProfile[fieldName].documents[0];
             await deletePdfFromCloudinary(oldDocument.public_id);
           }
 
-          // Upload new file
           uploadedPdf = await uploadPdfToCloudinary(
             pdfFiles[0].buffer,
             studentProfile.name,
-            studentProfile.bmdcNo,
+            studentProfile.bmdcNo
           );
           studentProfile[fieldName].documents = [
             {
@@ -338,7 +350,6 @@ const updateCourseDocument = async (req, res) => {
             },
           ];
         } else {
-          // Check if we are exceeding max limit (5 files)
           if (
             studentProfile[fieldName].documents.length + pdfFiles.length >
             5
@@ -371,10 +382,10 @@ const updateCourseDocument = async (req, res) => {
       }
     }
 
-    // ✅ Update Status
+    // ✅ Update status & completion year
     studentProfile[fieldName].status = "yes";
     if (completionYear) {
-      studentProfile[fieldName].completionYear = completionYear; // Update completionYear if provided
+      studentProfile[fieldName].completionYear = completionYear;
     }
     await studentProfile.save();
 
@@ -387,7 +398,7 @@ const updateCourseDocument = async (req, res) => {
   }
 };
 
-// ************************************************** Upload PDF & Update Status ************************************************** //
+// ************************************************** Upload PDF & Update Status ****************************************** //
 
 // ************************************************** Update Student Profile Data ************************************************** //
 const updateStudentDetails = async (req, res) => {
@@ -471,13 +482,41 @@ const updateStudentDetails = async (req, res) => {
 // ************************************************** Is AccountVerified Data list ************************************************** //
 const getUnverifiedStudents = async (req, res) => {
   try {
-    const unverifiedStudents = await Student.find({ isAccountVerified: false });
+    const unverifiedStudents = await Student.find({
+      isAccountVerified: false,
+      isEmailVerified: true,
+
+      // Ensure currentWorkingPlace has at least one entry with both name and designation
+      currentWorkingPlace: {
+        $elemMatch: {
+          name: { $ne: null, $ne: "" },
+          designation: { $ne: null, $ne: "" },
+        },
+      },
+
+      // Ensure postGraduationDegrees has at least one entry with degreeName and yearOfGraduation
+      postGraduationDegrees: {
+        $elemMatch: {
+          degreeName: { $ne: null, $ne: "" },
+          yearOfGraduation: { $ne: null },
+        },
+      },
+
+      // Ensure picture array is not empty and contains at least one with url and public_id
+      picture: {
+        $elemMatch: {
+          url: { $ne: null, $ne: "" },
+          public_id: { $ne: null, $ne: "" },
+        },
+      },
+    });
+
     res.json(unverifiedStudents);
   } catch (error) {
-    res.json("Error fetching unverified students:", error);
+    console.error("Error fetching unverified students:", error);
+    res.status(500).json({ message: "Error fetching unverified students." });
   }
 };
-
 // ************************************************** True account verified data ************************************************** //
 
 const getVerifiedStudents = async (req, res) => {
@@ -495,10 +534,11 @@ const getVerifiedStudents = async (req, res) => {
       "aoaFootAnkleSeminar",
       "aoPeer",
       "aoaOtherCourses",
+      "aoNonOperativeCourse",
       "aoaFellowship",
       "tableFaculty",
       "nationalFaculty",
-      "regionalFaculty"
+      "regionalFaculty",
     ];
 
     if (label && validLabels.includes(label)) {
@@ -523,28 +563,32 @@ const getVerifiedStudents = async (req, res) => {
   }
 };
 
-// ************************************************** Controlel for approve student ************************************************** //
+// ************************************************** Controller for approve student ************************************************** //
 
 const approveStudent = async (req, res) => {
-  const { studentId } = req.params; // Expecting studentId in the URL
+  const { studentId } = req.params;
 
   try {
-    const updatedStudent = await Student.findByIdAndUpdate(
-      studentId,
-      {
-        isAccountVerified: true,
-        isBmdcVerified: true,
-        remarks: null,
-      },
-      { new: true } // This option ensures the updated document is returned
-    );
+    const student = await Student.findById(studentId);
 
-    if (!updatedStudent) {
+    if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    console.log("Student Approved:", updatedStudent);
-    res.json(updatedStudent);
+    // Set verification fields
+    student.isAccountVerified = true;
+    student.isBmdcVerified = true;
+    student.remarks = null;
+
+    // Set aoaNo only if not already set
+    if (!student.aoaNo && student.bmdcNo) {
+      student.aoaNo = `AOA-${student.bmdcNo}`;
+    }
+
+    await student.save();
+
+    console.log("Student Approved:", student);
+    res.json(student);
   } catch (error) {
     console.error("Error approving student:", error);
     res.status(500).json({ message: "Error approving student" });
@@ -557,7 +601,7 @@ const denyStudent = async (req, res) => {
   const { remarks } = req.body;
   console.log(studentId);
   console.log(remarks);
-  
+
   // Validate that remarks are provided
   if (!remarks || remarks.trim() === "") {
     return res.status(400).json({ message: "Remarks are required" });
@@ -586,7 +630,6 @@ const denyStudent = async (req, res) => {
   }
 };
 
-
 module.exports = {
   getProfileData,
   updateProfileImage,
@@ -596,5 +639,5 @@ module.exports = {
   approveStudent,
   getVerifiedStudents,
   denyStudent,
-  getStudentProfileByAdmin
+  getStudentProfileByAdmin,
 };

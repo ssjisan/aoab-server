@@ -6,9 +6,14 @@ const StudentSchema = new mongoose.Schema({
     required: true,
   },
   bmdcNo: {
-    type: String,
+    type: Number,
     unique: true,
     required: true,
+  },
+  aoaNo: {
+    type: String,
+    unique: true,
+    default: null
   },
   isBmdcVerified: {
     type: Boolean,
@@ -21,7 +26,7 @@ const StudentSchema = new mongoose.Schema({
     lowercase: true,
   },
   contactNumber: {
-    type: String,
+    type: Number,
     required: true,
     unique: true,
   },

@@ -70,7 +70,7 @@ const registerStudent = async (req, res) => {
     if (!name.trim()) return res.json({ error: "Name is required" });
     if (!bmdcNo)
       return res.json({ error: "BM&DC Registration No is required" });
-    if (!email) return res.json({ error: "Email is required" });
+    if (!email.trim()) return res.json({ error: "Email is required" });
     if (!contactNumber)
       return res.json({ error: "Contact number is required" });
     if (!password || password.length < 8) {
@@ -92,21 +92,55 @@ const registerStudent = async (req, res) => {
     if (existingContact)
       return res.json({ error: "Contact number is already registered" });
 
-    // 4. Password validation: Minimum 8 characters, 1 number, 1 special character
-    const passwordRegex =
-      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
-    if (!passwordRegex.test(password)) {
-      return res.status(400).json({
-        message:
-          "Password must be at least 8 characters long, contain at least one number, and one special character.",
-      });
+    // 4. Email format validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // 5. Generate OTP
+    // 5. Password validation: Minimum 8 characters, 1 letter, 1 number, 1 special character
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters long." });
+    }
+
+    if (!/[A-Za-z]/.test(password)) {
+      return res
+        .status(400)
+        .json({ error: "Password must include at least one letter." });
+    }
+
+    if (!/\d/.test(password)) {
+      return res
+        .status(400)
+        .json({ error: "Password must include at least one number." });
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return res.status(400).json({
+        error: "Password must include at least one special character.",
+      });
+    }
+    // 6. Check mobile number 11 digital
+    let cleanedContactNumber = contactNumber;
+
+    // Check if the contact number starts with '0' and remove it
+    if (cleanedContactNumber.startsWith("0")) {
+      cleanedContactNumber = cleanedContactNumber.slice(1);
+    }
+
+    // Ensure the remaining number is exactly 10 digits long
+    if (!/^\d{10}$/.test(cleanedContactNumber)) {
+      return res.status(400).json({
+        error:
+          "Mobile number must be exactly 10 digits long, without the starting 0.",
+      });
+    }
+    // 7. Generate OTP
     const otp = generateOtp();
     const otpExpiration = new Date(Date.now() + 2 * 60 * 1000); // OTP expires in 2 minutes
 
-    // 6. Send OTP to email before saving student data
+    // 8. Send OTP to email before saving student data
     try {
       await sendOtp(email, otp); // Attempt to send OTP email
     } catch (emailError) {
@@ -116,10 +150,10 @@ const registerStudent = async (req, res) => {
         .json({ error: "Failed to send OTP. Please try again later." });
     }
 
-    // 7. Hash the password
+    // 9. Hash the password
     const hashedPassword = await hashPassword(password);
 
-    // 8. Create student object and save it only if OTP email was sent successfully
+    // 10. Create student object and save it only if OTP email was sent successfully
     const newStudent = await new Student({
       name,
       bmdcNo,
@@ -130,7 +164,7 @@ const registerStudent = async (req, res) => {
       otpExpiration: otpExpiration,
     }).save();
 
-    // 9. Return success response
+    // 11. Return success response
     res.json({
       newStudent: {
         name: newStudent.name,
@@ -179,6 +213,7 @@ const verifyOtp = async (req, res) => {
     student.otp = ""; // Clear OTP after successful verification
     student.otpExpiration = null;
     student.isEmailVerified = true;
+  
     await student.save();
 
     const token = generateToken(student);
