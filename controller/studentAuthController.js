@@ -66,31 +66,41 @@ const registerStudent = async (req, res) => {
     const { name, bmdcNo, email, contactNumber, password, confirmPassword } =
       req.body;
 
-    // 2. Validate inputs
-    if (!name.trim()) return res.json({ error: "Name is required" });
+    // 2. Validate required fields
+    if (!name?.trim()) return res.json({ error: "Name is required" });
     if (!bmdcNo)
       return res.json({ error: "BM&DC Registration No is required" });
-    if (!email.trim()) return res.json({ error: "Email is required" });
-    if (!contactNumber)
+    if (!email?.trim()) return res.json({ error: "Email is required" });
+    if (!contactNumber?.trim())
       return res.json({ error: "Contact number is required" });
+
     if (!password || password.length < 8) {
       return res.json({ error: "Password should be longer than 8 characters" });
     }
+
     if (password !== confirmPassword) {
       return res.json({ error: "Password and confirm password must match" });
     }
 
-    // 3. Check if the BM&DC No, email, or contact number is already taken
-    const existingBmdc = await Student.findOne({ bmdcNo });
-    if (existingBmdc)
-      return res.json({ error: "BM&DC Registration No is already registered" });
+    // 3. Clean and normalize contact number (remove +88 / 88 / 0 prefix)
+    let cleanedContactNumber = contactNumber.trim();
 
-    const existingStudent = await Student.findOne({ email });
-    if (existingStudent) return res.json({ error: "Email is already taken" });
+    // Remove country code prefixes
+    if (cleanedContactNumber.startsWith("+88")) {
+      cleanedContactNumber = cleanedContactNumber.slice(3);
+    } else if (cleanedContactNumber.startsWith("88")) {
+      cleanedContactNumber = cleanedContactNumber.slice(2);
+    } else if (cleanedContactNumber.startsWith("0")) {
+      cleanedContactNumber = cleanedContactNumber.slice(1);
+    }
 
-    const existingContact = await Student.findOne({ contactNumber });
-    if (existingContact)
-      return res.json({ error: "Contact number is already registered" });
+    // Ensure the final cleaned number is exactly 10 digits and starts with valid Bangladeshi prefix (1XXX...)
+    if (!/^[1][0-9]{9}$/.test(cleanedContactNumber)) {
+      return res.status(400).json({
+        error:
+          "Invalid mobile number. Please enter a valid Bangladeshi number (e.g., 01XXXXXXXXX or +8801XXXXXXXXX)",
+      });
+    }
 
     // 4. Email format validation
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -98,51 +108,50 @@ const registerStudent = async (req, res) => {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // 5. Password validation: Minimum 8 characters, 1 letter, 1 number, 1 special character
-    if (password.length < 8) {
-      return res
-        .status(400)
-        .json({ error: "Password must be at least 8 characters long." });
-    }
-
+    // 5. Password strength validation
     if (!/[A-Za-z]/.test(password)) {
       return res
         .status(400)
         .json({ error: "Password must include at least one letter." });
     }
-
     if (!/\d/.test(password)) {
       return res
         .status(400)
         .json({ error: "Password must include at least one number." });
     }
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      return res.status(400).json({
-        error: "Password must include at least one special character.",
-      });
-    }
-    // 6. Check mobile number 11 digital
-    let cleanedContactNumber = contactNumber;
-
-    // Check if the contact number starts with '0' and remove it
-    if (cleanedContactNumber.startsWith("0")) {
-      cleanedContactNumber = cleanedContactNumber.slice(1);
+      return res
+        .status(400)
+        .json({
+          error: "Password must include at least one special character.",
+        });
     }
 
-    // Ensure the remaining number is exactly 10 digits long
-    if (!/^\d{10}$/.test(cleanedContactNumber)) {
-      return res.status(400).json({
-        error:
-          "Mobile number must be exactly 10 digits long, without the starting 0.",
-      });
+    // 6. Uniqueness checks (use cleaned contact number)
+    const existingBmdc = await Student.findOne({ bmdcNo });
+    if (existingBmdc) {
+      return res.json({ error: "BM&DC Registration No is already registered" });
     }
+
+    const existingEmail = await Student.findOne({ email });
+    if (existingEmail) {
+      return res.json({ error: "Email is already taken" });
+    }
+
+    const existingContact = await Student.findOne({
+      contactNumber: cleanedContactNumber,
+    });
+    if (existingContact) {
+      return res.json({ error: "Contact number is already registered" });
+    }
+
     // 7. Generate OTP
     const otp = generateOtp();
     const otpExpiration = new Date(Date.now() + 2 * 60 * 1000); // OTP expires in 2 minutes
 
-    // 8. Send OTP to email before saving student data
+    // 8. Send OTP via email
     try {
-      await sendOtp(email, otp); // Attempt to send OTP email
+      await sendOtp(email, otp);
     } catch (emailError) {
       console.error("Error sending OTP email:", emailError);
       return res
@@ -153,19 +162,19 @@ const registerStudent = async (req, res) => {
     // 9. Hash the password
     const hashedPassword = await hashPassword(password);
 
-    // 10. Create student object and save it only if OTP email was sent successfully
+    // 10. Create and save student
     const newStudent = await new Student({
       name,
       bmdcNo,
       email,
-      contactNumber,
+      contactNumber: cleanedContactNumber,
       password: hashedPassword,
-      otp: otp.toString(), // Store OTP
-      otpExpiration: otpExpiration,
+      otp: otp.toString(),
+      otpExpiration,
     }).save();
 
-    // 11. Return success response
-    res.json({
+    // 11. Respond with success message
+    return res.json({
       newStudent: {
         name: newStudent.name,
         bmdcNo: newStudent.bmdcNo,
@@ -175,7 +184,7 @@ const registerStudent = async (req, res) => {
       message: "Please check your email for the OTP to verify your account.",
     });
   } catch (err) {
-    console.log("Error registering student:", err);
+    console.error("Error registering student:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -213,7 +222,7 @@ const verifyOtp = async (req, res) => {
     student.otp = ""; // Clear OTP after successful verification
     student.otpExpiration = null;
     student.isEmailVerified = true;
-  
+
     await student.save();
 
     const token = generateToken(student);

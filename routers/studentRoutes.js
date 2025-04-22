@@ -64,6 +64,7 @@ router.post(
 );
 router.get("/auth-check", requiredSignIn, (req, res) => {
   res.json({ ok: true });
+  console.log(res.data);
 });
 
 module.exports = router;

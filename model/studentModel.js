@@ -10,15 +10,6 @@ const StudentSchema = new mongoose.Schema({
     unique: true,
     required: true,
   },
-  aoaNo: {
-    type: String,
-    unique: true,
-    default: null
-  },
-  isBmdcVerified: {
-    type: Boolean,
-    default: null, // Will be true after OTP verification
-  },
   email: {
     type: String,
     required: true,
@@ -29,6 +20,16 @@ const StudentSchema = new mongoose.Schema({
     type: Number,
     required: true,
     unique: true,
+  },
+  aoaNo: {
+    type: String,
+    unique: true,
+    default: null,
+    sparse: true,
+  },
+  isBmdcVerified: {
+    type: Boolean,
+    default: null, // Will be true after OTP verification
   },
   password: {
     type: String,
@@ -56,8 +57,8 @@ const StudentSchema = new mongoose.Schema({
   // Arrays to hold multiple workplace and post-graduation details
   currentWorkingPlace: [
     {
-      name: { type: String },
-      designation: { type: String },
+      name: { type: String, default: null },
+      designation: { type: String, default: null },
     },
   ],
 
@@ -65,9 +66,15 @@ const StudentSchema = new mongoose.Schema({
     {
       degreeName: {
         type: String,
+        default: null,
       },
       yearOfGraduation: {
-        type: Number,
+        type: String,
+        default: null,
+      },
+      isCompleted: {
+        type: Boolean,
+        default: false,
       },
     },
   ],

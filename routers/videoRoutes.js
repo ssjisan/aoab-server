@@ -25,7 +25,7 @@ router.post(
   uploadNewVideo
 );
 
-router.get("/list_videos", getVideoList);
+router.get("/list_videos", requiredSignIn, getVideoList);
 router.get("/videos", getLimitedVideo);
 router.post("/update-video-order", requiredSignIn, updateVideoSequence);
 router.delete("/video/:slug", requiredSignIn, deleteVideo);

@@ -48,7 +48,10 @@ const uploadPdfToCloudinary = async (pdfBuffer, studentName, bmdcNo) => {
     const sanitizedStudentName = studentName.replace(/\s+/g, "_"); // Replace spaces with underscores
     const timestamp = Date.now(); // Unique timestamp
     const uniqueFilename = `document_${timestamp}`; // Ensuring unique file name
-    const sanitizedBdmcNo = bmdcNo.replace(/\s+/g, "_");
+
+    // Convert bmdcNo to string if it's a number
+    const sanitizedBdmcNo = String(bmdcNo).replace(/\s+/g, "_");
+
     const folderPath = `aoa-bd/documents/${sanitizedStudentName}_${sanitizedBdmcNo}`;
 
     const stream = cloudinary.uploader.upload_stream(
@@ -413,6 +416,55 @@ const updateStudentDetails = async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
+    // Validate and sanitize postGraduationDegrees[0]
+    if (Array.isArray(updateData.postGraduationDegrees)) {
+      const degree = updateData.postGraduationDegrees[0];
+
+      if (degree?.isCompleted === true) {
+        const cleanedDegreeName = degree.degreeName?.trim();
+        const cleanedYearString = degree.yearOfGraduation?.replace(/\D/g, "");
+        const year = Number(cleanedYearString);
+        const currentYear = new Date().getFullYear();
+
+        // Basic presence validation
+        if (!cleanedDegreeName || !cleanedYearString) {
+          return res.status(400).json({
+            message:
+              "To mark post graduation as complete, both 'Degree Name' and a valid 'Year of Post Graduation' are required.",
+          });
+        }
+
+        // Year validation
+        if (isNaN(year)) {
+          return res.status(400).json({
+            message: "Year of Post Graduation must be a valid number.",
+          });
+        }
+
+        if (year < 1971) {
+          return res.status(400).json({
+            message: "'Year of Post Graduation' cannot be before 1971.",
+          });
+        }
+
+        if (year > currentYear) {
+          return res.status(400).json({
+            message: `'Year of Post Graduation' cannot be later than ${currentYear}.`,
+          });
+        }
+
+        // Update cleaned values
+        degree.degreeName = cleanedDegreeName;
+        degree.yearOfGraduation = String(year);
+      } else {
+        // If not completed, reset values
+        degree.degreeName = "Not Yet";
+        degree.yearOfGraduation = "Not Yet";
+      }
+
+      // Put back updated degree object
+      updateData.postGraduationDegrees[0] = degree;
+    }
     // Check for duplicate email (if email is being updated)
     if (updateData.email && updateData.email !== student.email) {
       const existingEmail = await Student.findOne({ email: updateData.email });
@@ -489,8 +541,8 @@ const getUnverifiedStudents = async (req, res) => {
       // Ensure currentWorkingPlace has at least one entry with both name and designation
       currentWorkingPlace: {
         $elemMatch: {
-          name: { $ne: null, $ne: "" },
-          designation: { $ne: null, $ne: "" },
+          name: { $nin: [null, "", "N/A"] },
+          designation: { $nin: [null, "", "N/A"] },
         },
       },
 
@@ -510,7 +562,6 @@ const getUnverifiedStudents = async (req, res) => {
         },
       },
     });
-
     res.json(unverifiedStudents);
   } catch (error) {
     console.error("Error fetching unverified students:", error);
@@ -519,49 +570,132 @@ const getUnverifiedStudents = async (req, res) => {
 };
 // ************************************************** True account verified data ************************************************** //
 
+// const getVerifiedStudents = async (req, res) => {
+//   try {
+//     const { label, status } = req.query;
+
+//     const query = { isAccountVerified: true };
+
+//     const validLabels = [
+//       "aoBasicCourse",
+//       "aoAdvanceCourse",
+//       "aoMastersCourse",
+//       "aoaPediatricSeminar",
+//       "aoaPelvicSeminar",
+//       "aoaFootAnkleSeminar",
+//       "aoPeer",
+//       "aoaOtherCourses",
+//       "aoNonOperativeCourse",
+//       "aoaFellowship",
+//       "tableFaculty",
+//       "nationalFaculty",
+//       "regionalFaculty",
+//     ];
+
+//     if (label && validLabels.includes(label)) {
+//       if (status === "yes" || status === "no") {
+//         query[`${label}.status`] = status;
+//       } else {
+//         query[`${label}.status`] = { $exists: true }; // Includes fields with any value (null included)
+//       }
+//     }
+//     console.log("Final", query);
+
+//     const verifiedStudents = await Student.find(query);
+
+//     if (verifiedStudents.length === 0) {
+//       return res.status(200).json([]); // Return empty array with a successful status code
+//     }
+
+//     res.json(verifiedStudents);
+//   } catch (error) {
+//     console.error("Error fetching verified students:", error);
+//     res.status(500).json({ message: "Error fetching verified students" });
+//   }
+// };
+
+
+
+
+
+
+
+
 const getVerifiedStudents = async (req, res) => {
   try {
-    const { label, status } = req.query;
+    const { search, yearFrom, yearTo } = req.query;
 
-    const query = { isAccountVerified: true };
+    const query = {
+      isAccountVerified: true,
+    };
 
-    const validLabels = [
-      "aoBasicCourse",
-      "aoAdvanceCourse",
-      "aoMastersCourse",
-      "aoaPediatricSeminar",
-      "aoaPelvicSeminar",
-      "aoaFootAnkleSeminar",
-      "aoPeer",
-      "aoaOtherCourses",
-      "aoNonOperativeCourse",
-      "aoaFellowship",
-      "tableFaculty",
-      "nationalFaculty",
-      "regionalFaculty",
-    ];
+    // Search filter
+    if (search) {
+      const regex = new RegExp(search, 'i');
+      const orConditions = [
+        { name: { $regex: regex } },
+        { email: { $regex: regex } },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $toString: '$bmdcNo' },
+              regex: regex,
+            },
+          },
+        },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $toString: '$contactNumber' },
+              regex: regex,
+            },
+          },
+        },
+      ];
 
-    if (label && validLabels.includes(label)) {
-      if (status === "yes" || status === "no") {
-        query[`${label}.status`] = status;
-      } else {
-        query[`${label}.status`] = { $exists: true }; // Includes fields with any value (null included)
-      }
+      query.$or = orConditions;
     }
-    console.log("Final", query);
+
+
+    
+    // Year filter (on postGraduationDegrees.yearOfGraduation)
+    if (yearFrom || yearTo) {
+      query.postGraduationDegrees = {
+        $elemMatch: {isCompleted: true},
+      };
+      if (yearFrom) {
+        query.postGraduationDegrees.$elemMatch.yearOfGraduation = {
+          ...(query.postGraduationDegrees.$elemMatch.yearOfGraduation || {}),
+          $gte: yearFrom.toString(),
+        };
+      }
+
+      if (yearTo) {
+        query.postGraduationDegrees.$elemMatch.yearOfGraduation = {
+          ...(query.postGraduationDegrees.$elemMatch.yearOfGraduation || {}),
+          $lte: yearTo.toString(),
+        };
+      }
+      // Year filter (on postGraduationDegrees.yearOfGraduation)
+    }
+
+    console.log('Final Query:', JSON.stringify(query, null, 2));
 
     const verifiedStudents = await Student.find(query);
-
-    if (verifiedStudents.length === 0) {
-      return res.status(200).json([]); // Return empty array with a successful status code
-    }
-
-    res.json(verifiedStudents);
+    res.status(200).json(verifiedStudents);
   } catch (error) {
-    console.error("Error fetching verified students:", error);
-    res.status(500).json({ message: "Error fetching verified students" });
+    console.error('Error fetching verified students:', error);
+    res.status(500).json({ message: 'Error fetching verified students' });
   }
 };
+
+
+
+
+
+
+
+
 
 // ************************************************** Controller for approve student ************************************************** //
 

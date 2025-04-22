@@ -8,7 +8,7 @@ const requiredSignIn = (req, res, next) => {
       process.env.JWT_SECURE
     );
     req.user = decoded;
-    console.log("Authorized",decoded);
+    // console.log("Authorized",decoded);
     next();
   } catch (err) {
     console.log("Unauthorized access attempt:", err.message);
