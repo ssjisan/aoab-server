@@ -570,57 +570,6 @@ const getUnverifiedStudents = async (req, res) => {
 };
 // ************************************************** True account verified data ************************************************** //
 
-// const getVerifiedStudents = async (req, res) => {
-//   try {
-//     const { label, status } = req.query;
-
-//     const query = { isAccountVerified: true };
-
-//     const validLabels = [
-//       "aoBasicCourse",
-//       "aoAdvanceCourse",
-//       "aoMastersCourse",
-//       "aoaPediatricSeminar",
-//       "aoaPelvicSeminar",
-//       "aoaFootAnkleSeminar",
-//       "aoPeer",
-//       "aoaOtherCourses",
-//       "aoNonOperativeCourse",
-//       "aoaFellowship",
-//       "tableFaculty",
-//       "nationalFaculty",
-//       "regionalFaculty",
-//     ];
-
-//     if (label && validLabels.includes(label)) {
-//       if (status === "yes" || status === "no") {
-//         query[`${label}.status`] = status;
-//       } else {
-//         query[`${label}.status`] = { $exists: true }; // Includes fields with any value (null included)
-//       }
-//     }
-//     console.log("Final", query);
-
-//     const verifiedStudents = await Student.find(query);
-
-//     if (verifiedStudents.length === 0) {
-//       return res.status(200).json([]); // Return empty array with a successful status code
-//     }
-
-//     res.json(verifiedStudents);
-//   } catch (error) {
-//     console.error("Error fetching verified students:", error);
-//     res.status(500).json({ message: "Error fetching verified students" });
-//   }
-// };
-
-
-
-
-
-
-
-
 const getVerifiedStudents = async (req, res) => {
   try {
     const { search, yearFrom, yearTo } = req.query;
@@ -631,14 +580,14 @@ const getVerifiedStudents = async (req, res) => {
 
     // Search filter
     if (search) {
-      const regex = new RegExp(search, 'i');
+      const regex = new RegExp(search, "i");
       const orConditions = [
         { name: { $regex: regex } },
         { email: { $regex: regex } },
         {
           $expr: {
             $regexMatch: {
-              input: { $toString: '$bmdcNo' },
+              input: { $toString: "$bmdcNo" },
               regex: regex,
             },
           },
@@ -646,7 +595,7 @@ const getVerifiedStudents = async (req, res) => {
         {
           $expr: {
             $regexMatch: {
-              input: { $toString: '$contactNumber' },
+              input: { $toString: "$contactNumber" },
               regex: regex,
             },
           },
@@ -656,12 +605,10 @@ const getVerifiedStudents = async (req, res) => {
       query.$or = orConditions;
     }
 
-
-    
     // Year filter (on postGraduationDegrees.yearOfGraduation)
     if (yearFrom || yearTo) {
       query.postGraduationDegrees = {
-        $elemMatch: {isCompleted: true},
+        $elemMatch: { isCompleted: true },
       };
       if (yearFrom) {
         query.postGraduationDegrees.$elemMatch.yearOfGraduation = {
@@ -679,23 +626,15 @@ const getVerifiedStudents = async (req, res) => {
       // Year filter (on postGraduationDegrees.yearOfGraduation)
     }
 
-    console.log('Final Query:', JSON.stringify(query, null, 2));
+    console.log("Final Query:", JSON.stringify(query, null, 2));
 
     const verifiedStudents = await Student.find(query);
     res.status(200).json(verifiedStudents);
   } catch (error) {
-    console.error('Error fetching verified students:', error);
-    res.status(500).json({ message: 'Error fetching verified students' });
+    console.error("Error fetching verified students:", error);
+    res.status(500).json({ message: "Error fetching verified students" });
   }
 };
-
-
-
-
-
-
-
-
 
 // ************************************************** Controller for approve student ************************************************** //
 
@@ -764,6 +703,78 @@ const denyStudent = async (req, res) => {
   }
 };
 
+const getAllStudentStatusSummary = async (req, res) => {
+  try {
+    // Step 1: Aggregate counts for approved, wrong entry, total
+    const result = await Student.aggregate([
+      {
+        $facet: {
+          total: [{ $count: "count" }],
+          approved: [
+            { $match: { isAccountVerified: true } },
+            { $count: "count" },
+          ],
+          wrongEntry: [
+            { $match: { isEmailVerified: false } },
+            { $count: "count" },
+          ],
+        },
+      },
+    ]);
+
+    const formatCount = (arr) => (arr[0] ? arr[0].count : 0);
+
+    const data = result[0];
+    const total = formatCount(data.total);
+    const approved = formatCount(data.approved);
+    const wrongEntry = formatCount(data.wrongEntry);
+
+    // Step 2: Get pending count using your existing pending logic
+    const pendingStudents = await Student.find({
+      isAccountVerified: false,
+      isEmailVerified: true,
+      currentWorkingPlace: {
+        $elemMatch: {
+          name: { $nin: [null, "", "N/A"] },
+          designation: { $nin: [null, "", "N/A"] },
+        },
+      },
+      postGraduationDegrees: {
+        $elemMatch: {
+          degreeName: { $ne: null, $ne: "" },
+          yearOfGraduation: { $ne: null },
+        },
+      },
+      picture: {
+        $elemMatch: {
+          url: { $ne: null, $ne: "" },
+          public_id: { $ne: null, $ne: "" },
+        },
+      },
+    });
+
+    const pending = pendingStudents.length;
+
+    // Step 3: Derive incomplete accounts
+    const accountNotComplete = total - (approved + wrongEntry + pending);
+
+    // Step 4: Respond
+    res.json({
+      summary: {
+        total,
+        approved,
+        wrongEntry,
+        pending,
+        accountNotComplete,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getAllStudentStatusSummary:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
 module.exports = {
   getProfileData,
   updateProfileImage,
@@ -774,4 +785,5 @@ module.exports = {
   getVerifiedStudents,
   denyStudent,
   getStudentProfileByAdmin,
+  getAllStudentStatusSummary,
 };

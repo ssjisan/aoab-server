@@ -19,7 +19,8 @@ const {
   approveStudent,
   getVerifiedStudents,
   denyStudent,
-  getStudentProfileByAdmin
+  getStudentProfileByAdmin,
+  getAllStudentStatusSummary
 } = require("../controller/studentProfileController.js");
 const router = express.Router();
 const {
@@ -49,6 +50,7 @@ router.get("/verified-accounts", requiredSignIn, getVerifiedStudents);
 router.get("/approve/:studentId", requiredSignIn, approveStudent);
 router.put("/deny/:studentId", requiredSignIn, denyStudent);
 router.get("/student/:studentId", requiredSignIn, getStudentProfileByAdmin);
+router.get("/all-student",getAllStudentStatusSummary);
 
 router.post(
   "/update-profile-image",
