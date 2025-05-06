@@ -20,7 +20,9 @@ const {
   getVerifiedStudents,
   denyStudent,
   getStudentProfileByAdmin,
-  getAllStudentStatusSummary
+  getAllStudentStatusSummary,
+  getUnverifiedEmail,
+  removeUnverifiedEmailById
 } = require("../controller/studentProfileController.js");
 const router = express.Router();
 const {
@@ -50,7 +52,9 @@ router.get("/verified-accounts", requiredSignIn, getVerifiedStudents);
 router.get("/approve/:studentId", requiredSignIn, approveStudent);
 router.put("/deny/:studentId", requiredSignIn, denyStudent);
 router.get("/student/:studentId", requiredSignIn, getStudentProfileByAdmin);
-router.get("/all-student",getAllStudentStatusSummary);
+router.get("/all-student",requiredSignIn, getAllStudentStatusSummary);
+router.get("/unverified-email",requiredSignIn, getUnverifiedEmail);
+router.delete("/remove-unverified/:id",requiredSignIn, removeUnverifiedEmailById);
 
 router.post(
   "/update-profile-image",
@@ -59,7 +63,7 @@ router.post(
   updateProfileImage
 );
 router.post(
-  "/update-course",
+  "/update-course/:id",
   requiredSignIn,
   upload.array("documents"), // Allow multiple file uploads
   updateCourseDocument

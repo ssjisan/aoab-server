@@ -23,9 +23,7 @@ const StudentSchema = new mongoose.Schema({
   },
   aoaNo: {
     type: String,
-    unique: true,
     default: null,
-    sparse: true,
   },
   isBmdcVerified: {
     type: Boolean,
@@ -84,241 +82,31 @@ const StudentSchema = new mongoose.Schema({
     default: false, // Will be true after OTP verification
   },
 
-  // aoBasicCourse schema embedded inside StudentSchema
-  aoBasicCourse: {
+  courses: [
+  {
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+      required: true, // this makes _id = courseId required
+    },
     status: {
       type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
+      enum: ["yes", "no", null],
+      default: null,
     },
     documents: [
       {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
+        url: { type: String, required: true },
+        public_id: { type: String, required: true },
+        name: { type: String, required: true },
+        size: { type: Number, required: true },
       },
     ],
     completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoAdvanceCourse: {
-    status: {
       type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
     },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoMastersCourse: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoaPediatricSeminar: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoaPelvicSeminar: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoaFootAnkleSeminar: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoPeer: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoaOtherCourses: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoNonOperativeCourse: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  aoaFellowship: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  tableFaculty: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  nationalFaculty: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
-  regionalFaculty: {
-    status: {
-      type: String,
-      enum: ["yes", "no", null], // Added null as a valid status
-      default: null, // Default to null
-    },
-    documents: [
-      {
-        url: { type: String, required: true }, // File URL
-        public_id: { type: String, required: true }, // Cloudinary Public ID
-        name: { type: String, required: true }, // Original file name
-        size: { type: Number, required: true }, // File size in bytes
-      },
-    ],
-    completionYear: {
-      type: String, // This stores the full date (you can set it to the first day of the month)
-    },
-  },
+  }
+],
   remarks: {
     type: String,
     default: null,
