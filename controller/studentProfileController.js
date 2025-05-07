@@ -2,7 +2,7 @@ const Student = require("../model/studentModel.js");
 const dotenv = require("dotenv");
 const cloudinary = require("cloudinary").v2;
 const mongoose = require("mongoose");
-const CourseSetup = require('../model/courseSetupModel.js');
+const CourseSetup = require("../model/courseSetupModel.js");
 dotenv.config();
 
 const { CLOUD_NAME, API_KEY, API_SECRET } = process.env;
@@ -257,26 +257,38 @@ const updateCourseDocument = async (req, res) => {
     // If status is 'yes'
     if (status === "yes") {
       if (!completionYear) {
-        return res.status(400).json({ message: "Completion year is required." });
+        return res
+          .status(400)
+          .json({ message: "Completion year is required." });
       }
 
       // Retain only documents that were not removed
-      const remainingDocs = existingCourse?.documents?.filter(
-        (doc) => !removedFiles?.includes(doc.public_id)
-      ) || [];
+      const remainingDocs =
+        existingCourse?.documents?.filter(
+          (doc) => !removedFiles?.includes(doc.public_id)
+        ) || [];
 
       // Check if total documents after removal are empty and no new files
-      if ((!pdfFiles?.length || pdfFiles.length === 0) && remainingDocs.length === 0) {
-        return res.status(400).json({ message: "At least one file must be uploaded." });
+      if (
+        (!pdfFiles?.length || pdfFiles.length === 0) &&
+        remainingDocs.length === 0
+      ) {
+        return res
+          .status(400)
+          .json({ message: "At least one file must be uploaded." });
       }
 
       // Validate file count
       if (allowMultiple && pdfFiles?.length > 5) {
-        return res.status(400).json({ message: "You can upload up to 5 files." });
+        return res
+          .status(400)
+          .json({ message: "You can upload up to 5 files." });
       }
 
       if (!allowMultiple && pdfFiles?.length > 1) {
-        return res.status(400).json({ message: "Only one file allowed for this course." });
+        return res
+          .status(400)
+          .json({ message: "Only one file allowed for this course." });
       }
 
       // Delete removed files from Cloudinary
@@ -505,7 +517,7 @@ const getUnverifiedStudents = async (req, res) => {
     res.status(500).json({ message: "Error fetching unverified students." });
   }
 };
-// ************************************************** True account verified data ************************************************** //
+// ************************************************** Controller for Verified Student Data start here ************************************************** //
 
 const getVerifiedStudents = async (req, res) => {
   try {
@@ -563,22 +575,36 @@ const getVerifiedStudents = async (req, res) => {
 
     // Courses filter
     if (courses) {
-      const courseArray = Array.isArray(courses) ? courses : courses.split(",").map((id) => id.trim());
+      const courseArray = Array.isArray(courses)
+        ? courses
+        : courses.split(",").map((id) => id.trim());
       console.log(courseArray, "This is the course array");
 
-      // Add the condition for matching courses with status "yes"
-      query.courses = {
-        $elemMatch: {
-          _id: { $in: courseArray },  // No need to convert to ObjectId, MongoDB will handle string IDs
-          status: "yes",               // Ensure the course status is "yes"
+      // Build an array of $elemMatch conditions for each course
+      const courseConditions = courseArray.map((id) => ({
+        courses: {
+          $elemMatch: {
+            _id: id, // MongoDB can match string _id
+            status: "yes",
+          },
         },
-      };
+      }));
+
+      // Add all courseConditions to the query using $and
+      if (courseConditions.length > 0) {
+        query.$and = [...(query.$and || []), ...courseConditions];
+      }
     }
 
     console.log("Final Query:", JSON.stringify(query, null, 2));
 
-    // Execute the query
-    const verifiedStudents = await Student.find(query);
+    const includeExtraFields = yearFrom || yearTo || courses;
+
+const projection = includeExtraFields
+  ? undefined
+  : "name bmdcNo email contactNumber aoaNo";
+
+const verifiedStudents = await Student.find(query).select(projection).lean();
 
     // Return the results
     res.status(200).json(verifiedStudents);
@@ -587,6 +613,8 @@ const getVerifiedStudents = async (req, res) => {
     res.status(500).json({ message: "Error fetching verified students" });
   }
 };
+
+// ************************************************** Controller for Verified Student Data End here ************************************************** //
 
 
 // ************************************************** Controller for approve student ************************************************** //
@@ -620,8 +648,10 @@ const approveStudent = async (req, res) => {
     res.status(500).json({ message: "Error approving student" });
   }
 };
+// ************************************************** Controller for approve student End Here************************************************** //
 
-// ************************************************** Controller for deny student ************************************************** //
+
+// ************************************************** Controller for deny student Start Here************************************************** //
 const denyStudent = async (req, res) => {
   const { studentId } = req.params;
   const { remarks } = req.body;
@@ -656,7 +686,10 @@ const denyStudent = async (req, res) => {
   }
 };
 
-// Controler for summary //
+// ************************************************** Controller for deny student End Here************************************************** //
+
+
+// ************************************************** Controller for Summary Start Here************************************************** //
 
 const getAllStudentStatusSummary = async (req, res) => {
   try {
@@ -729,7 +762,10 @@ const getAllStudentStatusSummary = async (req, res) => {
   }
 };
 
-// Unverified email address controller
+// ************************************************** Controller for Summary End Here************************************************** //
+
+
+// ************************************************** Controller for Unverified email address controller Start Here************************************************** //
 
 const getUnverifiedEmail = async (req, res) => {
   try {
@@ -772,6 +808,8 @@ const removeUnverifiedEmailById = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+// ************************************************** Controller for Unverified email address controller End Here************************************************** //
 
 module.exports = {
   getProfileData,

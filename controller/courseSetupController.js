@@ -47,8 +47,8 @@ const createCourseSetup = async (req, res) => {
 const listOfSetupCourse = async (req, res) => {
   try {
     const setupCourse = await CourseSetup.find().sort({
+      createdAt: 1,
       sequence: 1,
-      createdAt: -1,
     }); // Sort by sequence, then by createdAt
     res.json(setupCourse);
   } catch (error) {
@@ -122,7 +122,9 @@ const updateCourseSetup = async (req, res) => {
       if (existingSetup) {
         return res
           .status(400)
-          .json({ error: "Another course setup with this name already exists." });
+          .json({
+            error: "Another course setup with this name already exists.",
+          });
       }
 
       updateFields.courseName = courseName.trim();
@@ -132,14 +134,20 @@ const updateCourseSetup = async (req, res) => {
       if (![0, 1].includes(typeOfParticipation)) {
         return res
           .status(400)
-          .json({ error: "Invalid typeOfParticipation. It must be Single or Multiple" });
+          .json({
+            error: "Invalid typeOfParticipation. It must be Single or Multiple",
+          });
       }
       updateFields.typeOfParticipation = typeOfParticipation;
     }
 
-    const updatedCourse = await CourseSetup.findByIdAndUpdate(id, updateFields, {
-      new: true,
-    });
+    const updatedCourse = await CourseSetup.findByIdAndUpdate(
+      id,
+      updateFields,
+      {
+        new: true,
+      }
+    );
 
     if (!updatedCourse) {
       return res.status(404).json({ error: "Course setup not found" });
@@ -147,7 +155,10 @@ const updateCourseSetup = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "Course setup updated successfully", data: updatedCourse });
+      .json({
+        message: "Course setup updated successfully",
+        data: updatedCourse,
+      });
   } catch (error) {
     console.error("Error updating course setup:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -159,5 +170,5 @@ module.exports = {
   listOfSetupCourse,
   updateSetupCourseSequence,
   removeCourseSetup,
-  updateCourseSetup
+  updateCourseSetup,
 };
