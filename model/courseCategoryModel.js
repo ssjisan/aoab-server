@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const courseSetupSchema = new mongoose.Schema(
+const courseCategorySchema = new mongoose.Schema(
   {
     courseName: {
       type: String,
@@ -18,4 +18,4 @@ const courseSetupSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("CourseSetup", courseSetupSchema);
+module.exports = mongoose.model("CourseCategory", courseCategorySchema);

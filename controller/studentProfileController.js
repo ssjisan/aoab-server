@@ -2,7 +2,7 @@ const Student = require("../model/studentModel.js");
 const dotenv = require("dotenv");
 const cloudinary = require("cloudinary").v2;
 const mongoose = require("mongoose");
-const CourseSetup = require("../model/courseSetupModel.js");
+const CourseCategory = require("../model/courseCategoryModel.js");
 dotenv.config();
 
 const { CLOUD_NAME, API_KEY, API_SECRET } = process.env;
@@ -211,7 +211,7 @@ const updateCourseDocument = async (req, res) => {
       return res.status(404).json({ message: "Student profile not found." });
     }
 
-    const courseData = await CourseSetup.findById(courseId);
+    const courseData = await CourseCategory.findById(courseId);
     if (!courseData) {
       return res.status(404).json({ message: "Course not found." });
     }

@@ -2,54 +2,92 @@ const mongoose = require("mongoose");
 
 const courseEventSchema = new mongoose.Schema(
   {
-    coverPhoto: [
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CourseCategory", // fixed from "CourseSetup" to match your actual mod
+      required: true,
+    },
+    title: { type: String, required: true },
+    location: { type: String },
+    fee: { type: Number },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    registrationStartDate: { type: Date },
+    registrationEndDate: { type: Date },
+    studentCap: { type: Number },
+    waitlistCap: { type: Number },
+    status: {
+      type: String,
+      enum: ["draft", "published", "archived"],
+      default: "draft",
+    },
+
+    contactPersons: [
       {
-        url: { type: String, required: true },
-        public_id: { type: String, required: true },
+        name: { type: String },
+        email: { type: String },
       },
     ],
-    title: {
-      type: String,
-      required: true,
+
+    details: { type: String },
+    cover: {
+      url: String,
+      public_id: String,
     },
-    location: {
-      type: String,
-      required: true,
+
+    prerequisites: {
+      // ✅ 1. Post Graduation required
+      postGraduationRequired: { type: Boolean, default: false },
+
+      postGraduationYearRange: {
+        start: { type: String }, // e.g., "2009"
+        end: { type: String }, // e.g., "2020"
+      },
+
+      // ✅ 2. Must have completed another course?
+      mustHave: {
+        type: String,
+        enum: ["yes", "no"],
+        default: "no",
+      },
+
+      requiredCourseCategory: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CourseCategory",
+        default: null,
+      },
+
+      // ✅ 3. Restrict re-enrollment based on category
+      restrictReenrollment: {
+        type: Boolean,
+        default: true,
+      },
     },
-    language: {
-      type: String,
-      required: true,
-    },
-    fees: {
-      type: Number,
-      required: true,
-    },
-    contactPerson: {
-      type: String,
-      required: true,
-    },
-    contactEmail: {
-      type: String,
-      required: true,
-    },
-    startDate: {
-      type: Date,
-      trim: true,
-      required: true,
-    },
-    endDate: {
-      type: Date,
-      trim: true,
-      required: true,
-    },
-    details: {
-      type: String,
-      required: true,
-    },
-    sequence: {
-      type: Number,
-      default: 0,
-    },
+
+    recipients: [
+      {
+        role: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CourseCategory", // Title of this category will be the role
+        },
+        student: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Student",
+        },
+      },
+    ],
+    signatures: [
+      {
+        recipient: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CourseEvent.recipients", // reference to a recipient entry
+        },
+        signature: {
+          url: String,
+          public_id: String,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

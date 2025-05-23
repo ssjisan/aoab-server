@@ -12,7 +12,7 @@ require("dotenv").config();
 //   },
 // });
 
-// // Test Email
+// Test Email
 // transporter.verify((error, success) => {
 //   if (error) {
 //     console.error("SMTP Error:", error);

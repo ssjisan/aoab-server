@@ -1,6 +1,6 @@
-const CourseSetup = require("../model/courseSetupModel.js");
+const CourseSetup = require("../model/courseCategoryModel.js");
 
-const createCourseSetup = async (req, res) => {
+const createCourseCategory = async (req, res) => {
   try {
     const { courseName, typeOfParticipation } = req.body;
 
@@ -44,11 +44,11 @@ const createCourseSetup = async (req, res) => {
   }
 };
 
-const listOfSetupCourse = async (req, res) => {
+const courseCategoryList = async (req, res) => {
   try {
     const setupCourse = await CourseSetup.find().sort({
-      createdAt: 1,
       sequence: 1,
+      createdAt: 1,
     }); // Sort by sequence, then by createdAt
     res.json(setupCourse);
   } catch (error) {
@@ -57,7 +57,7 @@ const listOfSetupCourse = async (req, res) => {
 };
 
 //  Update Sequence of List
-const updateSetupCourseSequence = async (req, res) => {
+const updateCategoryListSequence = async (req, res) => {
   try {
     const { reorderedSetupCourse } = req.body; // Array of forms with updated sequences
 
@@ -77,7 +77,7 @@ const updateSetupCourseSequence = async (req, res) => {
 };
 
 //  Remove Data using Id
-const removeCourseSetup = async (req, res) => {
+const removeCourseCategory = async (req, res) => {
   try {
     const { id } = req.params; // Get the data ID from the request parameters
 
@@ -95,7 +95,7 @@ const removeCourseSetup = async (req, res) => {
   }
 };
 
-const updateCourseSetup = async (req, res) => {
+const updateCourseCategory = async (req, res) => {
   try {
     const { id } = req.params;
     const { courseName, typeOfParticipation } = req.body;
@@ -120,11 +120,9 @@ const updateCourseSetup = async (req, res) => {
       });
 
       if (existingSetup) {
-        return res
-          .status(400)
-          .json({
-            error: "Another course setup with this name already exists.",
-          });
+        return res.status(400).json({
+          error: "Another course setup with this name already exists.",
+        });
       }
 
       updateFields.courseName = courseName.trim();
@@ -132,11 +130,9 @@ const updateCourseSetup = async (req, res) => {
 
     if (typeOfParticipation !== undefined) {
       if (![0, 1].includes(typeOfParticipation)) {
-        return res
-          .status(400)
-          .json({
-            error: "Invalid typeOfParticipation. It must be Single or Multiple",
-          });
+        return res.status(400).json({
+          error: "Invalid typeOfParticipation. It must be Single or Multiple",
+        });
       }
       updateFields.typeOfParticipation = typeOfParticipation;
     }
@@ -153,12 +149,10 @@ const updateCourseSetup = async (req, res) => {
       return res.status(404).json({ error: "Course setup not found" });
     }
 
-    res
-      .status(200)
-      .json({
-        message: "Course setup updated successfully",
-        data: updatedCourse,
-      });
+    res.status(200).json({
+      message: "Course setup updated successfully",
+      data: updatedCourse,
+    });
   } catch (error) {
     console.error("Error updating course setup:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -166,9 +160,9 @@ const updateCourseSetup = async (req, res) => {
 };
 
 module.exports = {
-  createCourseSetup,
-  listOfSetupCourse,
-  updateSetupCourseSequence,
-  removeCourseSetup,
-  updateCourseSetup,
+  createCourseCategory,
+  courseCategoryList,
+  updateCategoryListSequence,
+  removeCourseCategory,
+  updateCourseCategory,
 };
