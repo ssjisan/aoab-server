@@ -57,32 +57,38 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       contactPersons,
       status,
       details,
-
-      // Prerequisites fields coming flat from frontend
       requiresPrerequisite,
       postGradRequired,
       yearFrom,
       yearTo,
       selectedPrerequisiteCourses,
       restrictReenrollment,
+      studentCap,
+      waitlistCap,
+      registrationStartDate,
+      registrationEndDate,
     } = req.body;
+    console.log(req.body);
 
     if (!category || !title) {
-      return res.status(400).json({ message: "Category and Title are required." });
+      return res
+        .status(400)
+        .json({ message: "Category and Title are required." });
     }
 
     // Build the nested prerequisites object
     const prerequisites = {
-      mustHave: requiresPrerequisite ? "yes" : "no",
-      postGraduationRequired: !!postGradRequired,
+      mustHave: requiresPrerequisite === "yes" ? "yes" : "no",
+      postGraduationRequired: postGradRequired === "yes",
       postGraduationYearRange: {
         start: yearFrom || "",
         end: yearTo || "",
       },
       requiredCourseCategory: Array.isArray(selectedPrerequisiteCourses)
-    ? selectedPrerequisiteCourses
-    : [],
-      restrictReenrollment: restrictReenrollment !== undefined ? restrictReenrollment : true,
+        ? selectedPrerequisiteCourses
+        : [],
+      restrictReenrollment:
+        restrictReenrollment !== undefined ? restrictReenrollment : true,
     };
 
     const updateFields = {
@@ -95,9 +101,11 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       contactPersons,
       status: status || "draft",
       ...(details && { details }),
-
-      // Save prerequisites nested properly
       prerequisites,
+      studentCap,
+      waitlistCap,
+      registrationStartDate,
+      registrationEndDate,
     };
 
     if (req.params.id) {
@@ -107,7 +115,8 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
         { new: true }
       );
 
-      if (!updated) return res.status(404).json({ message: "Course not found." });
+      if (!updated)
+        return res.status(404).json({ message: "Course not found." });
       return res.status(200).json(updated);
     } else {
       const newCourse = new CourseEvent(updateFields);
@@ -119,8 +128,6 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-
 
 // ********************************************** The Create Course Event Function End Here ********************************************** //
 
@@ -198,11 +205,11 @@ exports.getFilteredCoursesEvents = async (req, res) => {
     if (status === "archived") {
       query = { endDate: { $lt: currentDate } }; // Archived events (endDate < currentDate)
     } else if (status === "running") {
-      query = { 
+      query = {
         $or: [
           { endDate: { $gte: currentDate } }, // Running events where endDate is in the future
-          { endDate: { $exists: false } } // Events without an endDate (still running)
-        ]
+          { endDate: { $exists: false } }, // Events without an endDate (still running)
+        ],
       };
     }
 
@@ -223,7 +230,6 @@ exports.getFilteredCoursesEvents = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 // For Delete Event or Course //
 exports.deleteCourseEvent = async (req, res) => {

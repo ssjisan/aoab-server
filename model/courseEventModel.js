@@ -69,12 +69,15 @@ const courseEventSchema = new mongoose.Schema(
       {
         role: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "CourseCategory", // Title of this category will be the role
+          ref: "CourseCategory",
+          required: true,
         },
-        student: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Student",
-        },
+        students: [
+          {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Student",
+          },
+        ],
       },
     ],
     signatures: [
