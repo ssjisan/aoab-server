@@ -1,7 +1,7 @@
 const express = require("express");
 const { requiredSignIn } = require("../middlewares/authMiddleware.js");
 const {
-  createCourseEvent,
+  createOrUpdateCourseEvent,
   listofAllCoursesEvents,
   updateCoursesEventsSequence,
   getEventsByStatus,
@@ -21,10 +21,16 @@ const router = express.Router();
 
 // Route to create a new doctor profile
 router.post(
-  "/create-course-event",
+  "/courses",
   requiredSignIn,
   upload.single("coverPhoto"),
-  createCourseEvent
+  createOrUpdateCourseEvent
+);
+router.put(
+  "/courses/:id",  // param name should match `req.params.id`
+  requiredSignIn,
+  upload.single("coverPhoto"),
+  createOrUpdateCourseEvent
 );
 router.get("/all_courses_events", listofAllCoursesEvents);
 router.post("/update-course-event-order", requiredSignIn, updateCoursesEventsSequence);

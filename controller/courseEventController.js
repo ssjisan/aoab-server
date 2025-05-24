@@ -45,84 +45,82 @@ const uploadImageToCloudinary = async (imageBuffer) => {
 
 // ********************************************** The Create Course Event Function Start Here ********************************************** //
 
-exports.createCourseEvent = async (req, res) => {
+exports.createOrUpdateCourseEvent = async (req, res) => {
   try {
-    let {
+    const {
+      category,
       title,
       location,
-      language,
-      fees,
-      contactPerson,
-      contactEmail,
+      fee,
       startDate,
       endDate,
+      contactPersons,
+      status,
       details,
-    } = req.body;
-    const coverPhoto = req.file;
 
-    // Validate required fields with improved checks
-    if (!title || !title.trim())
-      return res.status(400).json({ error: "Title is required" });
-    if (!location || !location.trim())
-      return res.status(400).json({ error: "Location is required" });
-    if (!language || !language.trim())
-      return res.status(400).json({ error: "Language is required" });
-    if (!fees || !fees.trim())
-      return res.status(400).json({ error: "Fee is required" });
-    if (!contactPerson || !contactPerson.trim())
-      return res.status(400).json({ error: "Contact Person is required" });
-    if (!contactEmail || !contactEmail.trim())
-      return res.status(400).json({ error: "Contact Email is required" });
-    if (!startDate || !startDate.trim())
-      return res.status(400).json({ error: "Start Date is required" });
-    if (!endDate || !endDate.trim())
-      return res.status(400).json({ error: "End Date is required" });
-    if (!details || !details.trim())
-      return res
-        .status(400)
-        .json({ error: "Details info about event or course is required" });
-    // Validate if coverPhoto is provided
-    if (!coverPhoto)
-      return res.status(400).json({ error: "Cover photo is required" });
-    // Upload the Event cover to Cloudinary if provided
-    let uploadedImage = null;
-    if (coverPhoto) {
-      try {
-        uploadedImage = await uploadImageToCloudinary(coverPhoto.buffer);
-      } catch (err) {
-        console.error("Error uploading image to Cloudinary:", err);
-        return res
-          .status(500)
-          .json({ error: "Failed to upload profile photo" });
-      }
+      // Prerequisites fields coming flat from frontend
+      requiresPrerequisite,
+      postGradRequired,
+      yearFrom,
+      yearTo,
+      selectedPrerequisiteCourses,
+      restrictReenrollment,
+    } = req.body;
+
+    if (!category || !title) {
+      return res.status(400).json({ message: "Category and Title are required." });
     }
 
-    // Create a new profile document based on the validated data
-    const courseEvent = new CourseEvent({
-      coverPhoto: uploadedImage
-        ? [{ url: uploadedImage.url, public_id: uploadedImage.public_id }]
-        : [],
+    // Build the nested prerequisites object
+    const prerequisites = {
+      mustHave: requiresPrerequisite ? "yes" : "no",
+      postGraduationRequired: !!postGradRequired,
+      postGraduationYearRange: {
+        start: yearFrom || "",
+        end: yearTo || "",
+      },
+      requiredCourseCategory: Array.isArray(selectedPrerequisiteCourses)
+    ? selectedPrerequisiteCourses
+    : [],
+      restrictReenrollment: restrictReenrollment !== undefined ? restrictReenrollment : true,
+    };
+
+    const updateFields = {
+      category,
       title,
       location,
-      language,
-      fees,
-      contactPerson,
-      contactEmail,
+      fee,
       startDate,
       endDate,
-      details,
-    });
+      contactPersons,
+      status: status || "draft",
+      ...(details && { details }),
 
-    // Save the new event or course document to the database
-    await courseEvent.save();
+      // Save prerequisites nested properly
+      prerequisites,
+    };
 
-    // Respond with the created profile
-    res.status(201).json(courseEvent);
-  } catch (err) {
-    console.error("Error creating course or event:", err);
-    res.status(500).json({ message: "Internal Server Error" });
+    if (req.params.id) {
+      const updated = await CourseEvent.findByIdAndUpdate(
+        req.params.id,
+        updateFields,
+        { new: true }
+      );
+
+      if (!updated) return res.status(404).json({ message: "Course not found." });
+      return res.status(200).json(updated);
+    } else {
+      const newCourse = new CourseEvent(updateFields);
+      const saved = await newCourse.save();
+      return res.status(201).json(saved);
+    }
+  } catch (error) {
+    console.error("Error in createOrUpdateCourseEvent:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 
 // ********************************************** The Create Course Event Function End Here ********************************************** //
 

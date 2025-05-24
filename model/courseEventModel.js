@@ -51,11 +51,12 @@ const courseEventSchema = new mongoose.Schema(
         default: "no",
       },
 
-      requiredCourseCategory: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "CourseCategory",
-        default: null,
-      },
+      requiredCourseCategory: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CourseCategory",
+        },
+      ],
 
       // ✅ 3. Restrict re-enrollment based on category
       restrictReenrollment: {
