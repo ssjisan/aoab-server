@@ -24,7 +24,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "aoa-bd/courseEvent", // Specify the folder name here
+        folder: "aoa-bd/courses", // Specify the folder name here
       },
       (error, result) => {
         if (error) {
@@ -40,6 +40,8 @@ const uploadImageToCloudinary = async (imageBuffer) => {
     stream.end(imageBuffer);
   });
 };
+
+
 
 // ********************************************** The Cloudinary upload function end here ********************************************** //
 
@@ -67,16 +69,17 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       waitlistCap,
       registrationStartDate,
       registrationEndDate,
+      paymentReceiveStartDate,
+      paymentReceiveEndDate,
+      recipients,
     } = req.body;
-    console.log(req.body);
 
+    // Basic validation
     if (!category || !title) {
-      return res
-        .status(400)
-        .json({ message: "Category and Title are required." });
+      return res.status(400).json({ message: "Category and Title are required." });
     }
 
-    // Build the nested prerequisites object
+    // Build prerequisites structure
     const prerequisites = {
       mustHave: requiresPrerequisite === "yes" ? "yes" : "no",
       postGraduationRequired: postGradRequired === "yes",
@@ -87,10 +90,10 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       requiredCourseCategory: Array.isArray(selectedPrerequisiteCourses)
         ? selectedPrerequisiteCourses
         : [],
-      restrictReenrollment:
-        restrictReenrollment !== undefined ? restrictReenrollment : true,
+      restrictReenrollment: restrictReenrollment !== undefined ? restrictReenrollment : true,
     };
 
+    // Prepare fields for create or update
     const updateFields = {
       category,
       title,
@@ -100,34 +103,47 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       endDate,
       contactPersons,
       status: status || "draft",
-      ...(details && { details }),
       prerequisites,
+      details,
       studentCap,
       waitlistCap,
       registrationStartDate,
       registrationEndDate,
+      paymentReceiveStartDate,
+      paymentReceiveEndDate,
+      recipients,
     };
 
-    if (req.params.id) {
-      const updated = await CourseEvent.findByIdAndUpdate(
-        req.params.id,
-        updateFields,
-        { new: true }
-      );
-
-      if (!updated)
-        return res.status(404).json({ message: "Course not found." });
-      return res.status(200).json(updated);
-    } else {
-      const newCourse = new CourseEvent(updateFields);
-      const saved = await newCourse.save();
-      return res.status(201).json(saved);
+    // Upload cover photo if provided
+    if (req.file) {
+      try {
+        const uploaded = await uploadImageToCloudinary(req.file.buffer);
+        updateFields.coverPhoto = [{ url: uploaded.url, public_id: uploaded.public_id }];
+      } catch (err) {
+        console.error("Cloudinary upload failed:", err);
+        return res.status(500).json({ message: "Cover photo upload failed" });
+      }
     }
-  } catch (error) {
-    console.error("Error in createOrUpdateCourseEvent:", error);
+
+    // If ID is provided -> Update
+    if (req.params.id) {
+      const updated = await CourseEvent.findByIdAndUpdate(req.params.id, updateFields, {
+        new: true,
+      });
+      if (!updated) return res.status(404).json({ message: "Course not found." });
+      return res.status(200).json(updated);
+    }
+
+    // Else -> Create
+    const newCourse = new CourseEvent(updateFields);
+    const saved = await newCourse.save();
+    return res.status(201).json(saved);
+  } catch (err) {
+    console.error("Course event error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // ********************************************** The Create Course Event Function End Here ********************************************** //
 

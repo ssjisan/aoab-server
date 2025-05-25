@@ -14,6 +14,8 @@ const courseEventSchema = new mongoose.Schema(
     endDate: { type: Date },
     registrationStartDate: { type: Date },
     registrationEndDate: { type: Date },
+    paymentReceiveStartDate: { type: Date },
+    paymentReceiveEndDate: { type: Date },
     studentCap: { type: Number },
     waitlistCap: { type: Number },
     status: {
@@ -30,7 +32,7 @@ const courseEventSchema = new mongoose.Schema(
     ],
 
     details: { type: String },
-    cover: {
+    coverPhoto: {
       url: String,
       public_id: String,
     },
@@ -72,7 +74,7 @@ const courseEventSchema = new mongoose.Schema(
           ref: "CourseCategory",
           required: true,
         },
-        students: [
+        profiles: [
           {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Student",
