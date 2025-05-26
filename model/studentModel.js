@@ -51,7 +51,12 @@ const StudentSchema = new mongoose.Schema({
       public_id: { type: String, required: true },
     },
   ],
-
+  signature: [
+    {
+      url: { type: String, required: true },
+      public_id: { type: String, required: true },
+    },
+  ],
   // Arrays to hold multiple workplace and post-graduation details
   currentWorkingPlace: [
     {
@@ -83,30 +88,30 @@ const StudentSchema = new mongoose.Schema({
   },
 
   courses: [
-  {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Course",
-      required: true, // this makes _id = courseId required
-    },
-    status: {
-      type: String,
-      enum: ["yes", "no", null],
-      default: null,
-    },
-    documents: [
-      {
-        url: { type: String, required: true },
-        public_id: { type: String, required: true },
-        name: { type: String, required: true },
-        size: { type: Number, required: true },
+    {
+      _id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Course",
+        required: true, // this makes _id = courseId required
       },
-    ],
-    completionYear: {
-      type: String,
+      status: {
+        type: String,
+        enum: ["yes", "no", null],
+        default: null,
+      },
+      documents: [
+        {
+          url: { type: String, required: true },
+          public_id: { type: String, required: true },
+          name: { type: String, required: true },
+          size: { type: Number, required: true },
+        },
+      ],
+      completionYear: {
+        type: String,
+      },
     },
-  }
-],
+  ],
   remarks: {
     type: String,
     default: null,

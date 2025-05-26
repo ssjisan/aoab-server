@@ -22,7 +22,8 @@ const {
   getStudentProfileByAdmin,
   getAllStudentStatusSummary,
   getUnverifiedEmail,
-  removeUnverifiedEmailById
+  removeUnverifiedEmailById,
+  updateSignature
 } = require("../controller/studentProfileController.js");
 const router = express.Router();
 const {
@@ -62,6 +63,13 @@ router.post(
   upload.single("picture"),
   updateProfileImage
 );
+router.post(
+  "/update-signature",
+  requiredSignIn,
+  upload.single("signature"),
+  updateSignature
+);
+
 router.post(
   "/update-course/:id",
   requiredSignIn,

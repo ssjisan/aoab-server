@@ -41,8 +41,6 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   });
 };
 
-
-
 // ********************************************** The Cloudinary upload function end here ********************************************** //
 
 // ********************************************** The Create Course Event Function Start Here ********************************************** //
@@ -72,17 +70,21 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       paymentReceiveStartDate,
       paymentReceiveEndDate,
       recipients,
+      signatures,
     } = req.body;
 
     // Basic validation
     if (!category || !title) {
-      return res.status(400).json({ message: "Category and Title are required." });
+      return res
+        .status(400)
+        .json({ message: "Category and Title are required." });
     }
+console.log(req.body);
 
     // Build prerequisites structure
     const prerequisites = {
       mustHave: requiresPrerequisite === "yes" ? "yes" : "no",
-      postGraduationRequired: postGradRequired === "yes",
+      postGraduationRequired: postGradRequired  === "yes" ? "yes" : "no",
       postGraduationYearRange: {
         start: yearFrom || "",
         end: yearTo || "",
@@ -90,7 +92,8 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       requiredCourseCategory: Array.isArray(selectedPrerequisiteCourses)
         ? selectedPrerequisiteCourses
         : [],
-      restrictReenrollment: restrictReenrollment !== undefined ? restrictReenrollment : true,
+      restrictReenrollment:
+        restrictReenrollment !== undefined ? restrictReenrollment : true,
     };
 
     // Prepare fields for create or update
@@ -112,13 +115,17 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       paymentReceiveStartDate,
       paymentReceiveEndDate,
       recipients,
+      signatures,
     };
 
     // Upload cover photo if provided
     if (req.file) {
       try {
         const uploaded = await uploadImageToCloudinary(req.file.buffer);
-        updateFields.coverPhoto = [{ url: uploaded.url, public_id: uploaded.public_id }];
+        updateFields.coverPhoto = {
+          url: uploaded.url,
+          public_id: uploaded.public_id,
+        };
       } catch (err) {
         console.error("Cloudinary upload failed:", err);
         return res.status(500).json({ message: "Cover photo upload failed" });
@@ -127,10 +134,15 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
 
     // If ID is provided -> Update
     if (req.params.id) {
-      const updated = await CourseEvent.findByIdAndUpdate(req.params.id, updateFields, {
-        new: true,
-      });
-      if (!updated) return res.status(404).json({ message: "Course not found." });
+      const updated = await CourseEvent.findByIdAndUpdate(
+        req.params.id,
+        updateFields,
+        {
+          new: true,
+        }
+      );
+      if (!updated)
+        return res.status(404).json({ message: "Course not found." });
       return res.status(200).json(updated);
     }
 
@@ -143,7 +155,6 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 // ********************************************** The Create Course Event Function End Here ********************************************** //
 
@@ -247,7 +258,7 @@ exports.getFilteredCoursesEvents = async (req, res) => {
   }
 };
 
-// For Delete Event or Course //
+// ----------------------------------------------------------- For Delete Event or Course Start Here ----------------------------------------------------------- //
 exports.deleteCourseEvent = async (req, res) => {
   try {
     const { courseEventId } = req.params;
@@ -258,12 +269,12 @@ exports.deleteCourseEvent = async (req, res) => {
     }
 
     // Delete profile photo from Cloudinary
-    if (courseEvent.coverPhoto && courseEvent.coverPhoto.length > 0) {
+    if (courseEvent.coverPhoto && courseEvent.coverPhoto.public_id) {
       try {
-        const publicId = courseEvent.coverPhoto[0].public_id;
+        const publicId = courseEvent.coverPhoto.public_id;
         await cloudinary.uploader.destroy(publicId);
       } catch (error) {
-        res.json({ message: error.message });
+        return res.status(500).json({ message: error.message });
       }
     }
     res.status(200).json({ message: "Course or Event deleted successfully" });
@@ -271,6 +282,8 @@ exports.deleteCourseEvent = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ----------------------------------------------------------- For Delete Event or Course End Here ----------------------------------------------------------- //
 
 // For Specific Profile Read //
 exports.readCourseEvent = async (req, res) => {

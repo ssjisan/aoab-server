@@ -13,7 +13,7 @@ const formsRoutes = require("./routers/formsRoutes");
 const albumRoutes = require("./routers/albumRoutes");
 const studentRoutes = require("./routers/studentRoutes");
 const webMessage = require("./helper/webMessage.js");
-const courseSetupRoutes = require("./routers/courseSetupRoutes")
+const courseCategoryRoutes = require("./routers/courseCategoryRoutes.js")
 
 dotenv.config();
 
@@ -36,7 +36,7 @@ app.use(authRoutes);
 app.use(onlineLearningRoutes);
 app.use(videoRoutes);
 app.use(courseEventRoutes);
-app.use(courseSetupRoutes);
+app.use(courseCategoryRoutes);
 app.use(importantLinksRoutes);
 app.use(formsRoutes);
 app.use(albumRoutes);

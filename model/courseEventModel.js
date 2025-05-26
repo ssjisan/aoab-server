@@ -39,7 +39,11 @@ const courseEventSchema = new mongoose.Schema(
 
     prerequisites: {
       // ✅ 1. Post Graduation required
-      postGraduationRequired: { type: Boolean, default: false },
+      postGraduationRequired: {
+        type: String,
+        enum: ["yes", "no"],
+        default: "no",
+      },
 
       postGraduationYearRange: {
         start: { type: String }, // e.g., "2009"
@@ -82,18 +86,8 @@ const courseEventSchema = new mongoose.Schema(
         ],
       },
     ],
-    signatures: [
-      {
-        recipient: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "CourseEvent.recipients", // reference to a recipient entry
-        },
-        signature: {
-          url: String,
-          public_id: String,
-        },
-      },
-    ],
+    signatures: [{ type: mongoose.Schema.Types.ObjectId, ref: "Student" }],
+    sequence: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -42,6 +42,26 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   });
 };
 
+const uploadSignatureToCloudinary = async (imageBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "aoa-bd/singature", // Specify the folder name here
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve({
+            url: result.secure_url,
+            public_id: result.public_id,
+          });
+        }
+      }
+    );
+    stream.end(imageBuffer);
+  });
+};
 // ********************************************** Upload PDF to Cloudinary ********************************************** //
 
 const uploadPdfToCloudinary = async (pdfBuffer, studentName, bmdcNo) => {
@@ -193,6 +213,64 @@ const updateProfileImage = async (req, res) => {
 };
 
 // ********************************************** Update Profile Photo function start here ********************************************** //
+
+
+// ********************************************** Update Profile Photo function start here ********************************************** //
+
+const updateSignature = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const signatureFile = req.file;
+
+    const studentProfile = await Student.findById(userId);
+    if (!studentProfile) {
+      return res.status(404).json({ error: "User profile not found" });
+    }
+
+    // If the user already has a signature, delete the old one from Cloudinary
+    if (studentProfile.signature?.length > 0) {
+      const oldSignature = studentProfile.signature[0];
+      if (oldSignature.public_id) {
+        try {
+          await cloudinary.uploader.destroy(oldSignature.public_id);
+          console.log("Old signature deleted:", oldSignature.public_id);
+        } catch (err) {
+          console.error("Error deleting old signature from Cloudinary:", err);
+        }
+      }
+    }
+
+    // Upload new signature image to Cloudinary
+    let uploadedSignature;
+    try {
+      uploadedSignature = await uploadSignatureToCloudinary(signatureFile.buffer);
+    } catch (err) {
+      console.error("Error uploading signature to Cloudinary:", err);
+      return res.status(500).json({ error: "Failed to upload signature" });
+    }
+
+    // Replace old signature with new one
+    studentProfile.signature = [
+      {
+        url: uploadedSignature.url,
+        public_id: uploadedSignature.public_id,
+      },
+    ];
+
+    await studentProfile.save();
+
+    res.status(200).json({ signature: studentProfile.signature });
+  } catch (err) {
+    console.error("Error uploading signature:", err);
+    res
+      .status(500)
+      .json({ message: "Error uploading signature", error: err.message });
+  }
+};
+
+
+// ********************************************** Update Profile Photo function start here ********************************************** //
+
 
 // ********************************************** Upload PDF & Update Status ********************************************** /
 
@@ -600,11 +678,13 @@ const getVerifiedStudents = async (req, res) => {
 
     const includeExtraFields = yearFrom || yearTo || courses;
 
-const projection = includeExtraFields
-  ? undefined
-  : "name bmdcNo email contactNumber aoaNo";
+    const projection = includeExtraFields
+      ? undefined
+      : "name bmdcNo email contactNumber aoaNo signature";
 
-const verifiedStudents = await Student.find(query).select(projection).lean();
+    const verifiedStudents = await Student.find(query)
+      .select(projection)
+      .lean();
 
     // Return the results
     res.status(200).json(verifiedStudents);
@@ -615,7 +695,6 @@ const verifiedStudents = await Student.find(query).select(projection).lean();
 };
 
 // ************************************************** Controller for Verified Student Data End here ************************************************** //
-
 
 // ************************************************** Controller for approve student ************************************************** //
 
@@ -649,7 +728,6 @@ const approveStudent = async (req, res) => {
   }
 };
 // ************************************************** Controller for approve student End Here************************************************** //
-
 
 // ************************************************** Controller for deny student Start Here************************************************** //
 const denyStudent = async (req, res) => {
@@ -687,7 +765,6 @@ const denyStudent = async (req, res) => {
 };
 
 // ************************************************** Controller for deny student End Here************************************************** //
-
 
 // ************************************************** Controller for Summary Start Here************************************************** //
 
@@ -764,7 +841,6 @@ const getAllStudentStatusSummary = async (req, res) => {
 
 // ************************************************** Controller for Summary End Here************************************************** //
 
-
 // ************************************************** Controller for Unverified email address controller Start Here************************************************** //
 
 const getUnverifiedEmail = async (req, res) => {
@@ -814,6 +890,7 @@ const removeUnverifiedEmailById = async (req, res) => {
 module.exports = {
   getProfileData,
   updateProfileImage,
+  updateSignature,
   updateCourseDocument,
   updateStudentDetails,
   getUnverifiedStudents,

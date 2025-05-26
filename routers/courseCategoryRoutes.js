@@ -7,7 +7,7 @@ const {
   updateCategoryListSequence,
   removeCourseCategory,
   updateCourseCategory,
-} = require("../controller/courseSetupController.js");
+} = require("../controller/courseCategoryController.js");
 
 // import middleware
 const { requiredSignIn } = require("../middlewares/authMiddleware.js");
