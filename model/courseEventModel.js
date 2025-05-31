@@ -18,11 +18,6 @@ const courseEventSchema = new mongoose.Schema(
     paymentReceiveEndDate: { type: Date },
     studentCap: { type: Number },
     waitlistCap: { type: Number },
-    status: {
-      type: String,
-      enum: ["draft", "published", "archived"],
-      default: "draft",
-    },
 
     contactPersons: [
       {

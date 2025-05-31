@@ -89,7 +89,7 @@ const StudentSchema = new mongoose.Schema({
 
   courses: [
     {
-      _id: {
+      courseCategoryId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Course",
         required: true, // this makes _id = courseId required

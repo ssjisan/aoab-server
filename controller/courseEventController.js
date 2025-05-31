@@ -1,6 +1,7 @@
 const cloudinary = require("cloudinary").v2;
 const dotenv = require("dotenv");
 const CourseEvent = require("../model/courseEventModel.js");
+const dayjs = require("dayjs");
 
 dotenv.config();
 
@@ -55,7 +56,6 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       startDate,
       endDate,
       contactPersons,
-      status,
       details,
       requiresPrerequisite,
       postGradRequired,
@@ -72,6 +72,7 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
       recipients,
       signatures,
     } = req.body;
+    console.log(req.body);
 
     // Basic validation
     if (!category || !title) {
@@ -79,12 +80,11 @@ exports.createOrUpdateCourseEvent = async (req, res) => {
         .status(400)
         .json({ message: "Category and Title are required." });
     }
-console.log(req.body);
 
     // Build prerequisites structure
     const prerequisites = {
       mustHave: requiresPrerequisite === "yes" ? "yes" : "no",
-      postGraduationRequired: postGradRequired  === "yes" ? "yes" : "no",
+      postGraduationRequired: postGradRequired === "yes" ? "yes" : "no",
       postGraduationYearRange: {
         start: yearFrom || "",
         end: yearTo || "",
@@ -105,8 +105,6 @@ console.log(req.body);
       startDate,
       endDate,
       contactPersons,
-      status: status || "draft",
-      prerequisites,
       details,
       studentCap,
       waitlistCap,
@@ -117,6 +115,29 @@ console.log(req.body);
       recipients,
       signatures,
     };
+
+    if (
+      requiresPrerequisite !== undefined ||
+      postGradRequired !== undefined ||
+      yearFrom !== undefined ||
+      yearTo !== undefined ||
+      selectedPrerequisiteCourses !== undefined ||
+      restrictReenrollment !== undefined
+    ) {
+      updateFields.prerequisites = {
+        mustHave: requiresPrerequisite === "yes" ? "yes" : "no",
+        postGraduationRequired: postGradRequired === "yes" ? "yes" : "no",
+        postGraduationYearRange: {
+          start: yearFrom || "",
+          end: yearTo || "",
+        },
+        requiredCourseCategory: Array.isArray(selectedPrerequisiteCourses)
+          ? selectedPrerequisiteCourses
+          : [],
+        restrictReenrollment:
+          restrictReenrollment !== undefined ? restrictReenrollment : true,
+      };
+    }
 
     // Upload cover photo if provided
     if (req.file) {
@@ -175,6 +196,7 @@ exports.listofAllCoursesEvents = async (req, res) => {
 exports.updateCoursesEventsSequence = async (req, res) => {
   try {
     const { reorderedCourseEvent } = req.body; // Array of resources with updated sequences
+    console.log(req.body);
 
     const bulkOps = reorderedCourseEvent.map((resource, index) => ({
       updateOne: {
@@ -300,64 +322,53 @@ exports.readCourseEvent = async (req, res) => {
   }
 };
 
-// Update Profile //
+// ----------------------------------------------------- For Getting all Course Start Here----------------------------------------------------------- //
 
-exports.updateCourseEvent = async (req, res) => {
+exports.getClassifiedCourses = async (req, res) => {
   try {
-    const { courseEventId } = req.params; // Assuming the ID parameter is 'courseEventId'
-    let {
-      title,
-      location,
-      language,
-      fees,
-      contactPerson,
-      contactEmail,
-      startDate,
-      endDate,
-      details,
-    } = req.body;
-    const coverPhoto = req.file;
+    const now = new Date();
+    const startOfToday = new Date(now.setHours(0, 0, 0, 0));
 
-    // Find the event or course in the database
-    const courseEvent = await CourseEvent.findById(courseEventId);
-    if (!courseEvent) {
-      return res.status(404).json({ message: "Event or course not found" });
-    }
+    // Get limit and skip from query params, with defaults
+    const limit = parseInt(req.query.limit) || 5;
+    const upcomingSkip = parseInt(req.query.upcomingSkip) || 0;
+    const archivedSkip = parseInt(req.query.archivedSkip) || 0;
 
-    // Update fields if provided in the request body
-    courseEvent.title = title || courseEvent.title;
-    courseEvent.location = location || courseEvent.location;
-    courseEvent.language = language || courseEvent.language;
-    courseEvent.fees = fees || courseEvent.fees;
-    courseEvent.contactPerson = contactPerson || courseEvent.contactPerson;
-    courseEvent.contactEmail = contactEmail || courseEvent.contactEmail;
-    courseEvent.startDate = startDate || courseEvent.startDate;
-    courseEvent.endDate = endDate || courseEvent.endDate;
-    courseEvent.details = details || courseEvent.details;
+    // Upcoming Courses
+    const upcoming = await CourseEvent.find({
+      endDate: { $gte: startOfToday },
+    })
+      .select("_id title startDate endDate coverPhoto.url fee location")
+      .sort({ sequence: 1, startDate: 1 })
+      .skip(upcomingSkip)
+      .limit(limit)
+      .lean();
 
-    // Handle cover photo upload and update if provided
-    if (coverPhoto) {
-      try {
-        const uploadedImage = await uploadImageToCloudinary(coverPhoto.buffer);
-        // Remove the old image from Cloudinary if it exists
-        if (courseEvent.coverPhoto.length > 0) {
-          const oldPublicId = courseEvent.coverPhoto[0].public_id;
-          await cloudinary.uploader.destroy(oldPublicId);
-        }
-        courseEvent.coverPhoto = [
-          { url: uploadedImage.url, public_id: uploadedImage.public_id },
-        ];
-      } catch (err) {
-        return res.status(500).json({ error: "Failed to upload image" });
-      }
-    }
+    // Archived Courses
+    const archived = await CourseEvent.find({
+      endDate: { $lt: startOfToday },
+    })
+      .select("_id title startDate endDate coverPhoto.url fee location")
+      .sort({ sequence: 1, endDate: -1 })
+      .skip(archivedSkip)
+      .limit(limit)
+      .lean();
 
-    // Save the updated event/course
-    await courseEvent.save();
+    // Coming Next (only first 1 upcoming course)
+    const comingNext = await CourseEvent.findOne({
+      endDate: { $gte: startOfToday },
+    })
+      .select("_id title startDate endDate coverPhoto.url fee location")
+      .sort({ startDate: 1 })
+      .lean();
 
-    res.status(200).json(courseEvent);
+    return res.json({
+      comingNextCourse: comingNext,
+      upcomingCourses: upcoming,
+      archivedCourses: archived,
+    });
   } catch (error) {
-    console.error("Error updating course event:", error);
-    res.status(500).json({ error: "Failed to update event/course" });
+    console.error("Error fetching courses:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

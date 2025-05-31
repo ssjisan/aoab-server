@@ -14,6 +14,7 @@ const albumRoutes = require("./routers/albumRoutes");
 const studentRoutes = require("./routers/studentRoutes");
 const webMessage = require("./helper/webMessage.js");
 const courseCategoryRoutes = require("./routers/courseCategoryRoutes.js")
+const enrollmentRoutes = require("./routers/enrollmentRoutes.js")
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use(importantLinksRoutes);
 app.use(formsRoutes);
 app.use(albumRoutes);
 app.use(studentRoutes);
+app.use(enrollmentRoutes);
 
 const port = process.env.PORT || 8001;
 

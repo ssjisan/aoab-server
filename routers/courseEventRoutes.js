@@ -8,7 +8,7 @@ const {
   getFilteredCoursesEvents,
   deleteCourseEvent,
   readCourseEvent,
-  updateCourseEvent
+  getClassifiedCourses
 } = require("../controller/courseEventController.js");
 const multer = require("multer");
 
@@ -32,12 +32,12 @@ router.put(
   upload.single("coverPhoto"),
   createOrUpdateCourseEvent
 );
-router.get("/all_courses_events", listofAllCoursesEvents);
 router.post("/update-course-event-order", requiredSignIn, updateCoursesEventsSequence);
+router.delete("/courses_events/:courseEventId", requiredSignIn, deleteCourseEvent);
+router.get("/courses/status", getClassifiedCourses);
+router.get("/courses_events/:courseEventId", readCourseEvent);
+router.get("/all_courses_events", listofAllCoursesEvents);
 router.get("/events-by-status", requiredSignIn, getEventsByStatus);
 router.get("/courses_events", getFilteredCoursesEvents);
-router.delete("/courses_events/:courseEventId", requiredSignIn, deleteCourseEvent);
-router.get("/courses_events/:courseEventId", readCourseEvent);
-router.put("/courses_events/:courseEventId", requiredSignIn, upload.single("coverPhoto"), updateCourseEvent);
 
 module.exports = router;
