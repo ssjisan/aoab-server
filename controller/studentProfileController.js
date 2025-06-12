@@ -820,13 +820,13 @@ const courseDocument = async (req, res) => {
         return res.status(400).json({ error: "Completion year is required" });
       }
 
-      const validFormat =
-        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec),\s\d{4}$/;
-      if (!validFormat.test(completionYear)) {
-        return res.status(400).json({
-          error: "Invalid completion year format (expected: 'Jan, 2024')",
-        });
-      }
+      // const validFormat =
+      //   /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec),\s\d{4}$/;
+      // if (!validFormat.test(completionYear)) {
+      //   return res.status(400).json({
+      //     error: "Invalid completion year format (expected: 'Jan, 2024')",
+      //   });
+      // }
 
       // Handle file upload (PDFs only)
       if (req.files && req.files.length > 0) {

@@ -15,7 +15,8 @@ const studentRoutes = require("./routers/studentRoutes");
 const webMessage = require("./helper/webMessage.js");
 const courseCategoryRoutes = require("./routers/courseCategoryRoutes.js")
 const enrollmentRoutes = require("./routers/enrollmentRoutes.js")
-
+const checkPaymentWindowExpiry = require("./helper/cornJob.js");
+checkPaymentWindowExpiry();
 dotenv.config();
 
 // Initialize Express App
