@@ -8,9 +8,9 @@ router.get("/certificate-preview", async (req, res) => {
     const buffer = await generateCertificateImageBuffer({
       studentName: "Dr. Sadman Sakib",
       courseTitle: "AO Alliance Seminar Pediatric Fracture Management",
-      role:"faculty",
+      role: "faculty",
       issuedDate: "15 June 2025",
-      location:"Dhaka, Bangladesh"
+      location: "Dhaka, Bangladesh",
     });
 
     res.set("Content-Type", "image/png");

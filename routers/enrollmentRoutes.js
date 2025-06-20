@@ -9,7 +9,9 @@ const {
   rejectEnrollmentPayment,
   acceptEnrollmentPayment,
   moveToEnrolled,
-  getFinalListByCourse
+  getFinalListByCourse,
+  markStudentsAsPresent,
+  getConfirmListByCourse
 } = require("../controller/enrollmentController.js");
 
 const { requiredSignIn } = require("../middlewares/authMiddleware.js");
@@ -29,8 +31,14 @@ router.get(
 router.get(
   "/enrollment-history/confirmed/:courseId",
   requiredSignIn,
+  getConfirmListByCourse
+);
+router.get(
+  "/enrollment-history/final/:courseId",
+  requiredSignIn,
   getFinalListByCourse
 );
+
 router.get(
   "/enrollment-history/student/:studentId",
   requiredSignIn,
@@ -45,5 +53,6 @@ router.post(
 router.patch("/enrollment/reject", requiredSignIn, rejectEnrollmentPayment);
 router.patch("/enrollment/accept", requiredSignIn, acceptEnrollmentPayment);
 router.post("/enrollment/move", requiredSignIn, moveToEnrolled);
+router.put("/mark-attendance/:courseId", requiredSignIn, markStudentsAsPresent);
 
 module.exports = router;

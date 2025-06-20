@@ -9,31 +9,61 @@ const checkPaymentWindowExpiry = () => {
     try {
       const now = new Date();
 
-      // Step 1: Find courses where paymentReceiveEndDate has passed
-      const expiredCourses = await Course.find({
-        paymentReceiveEndDate: { $lt: now },
-      });
+      // Step 1: Get all courses
+      const allCourses = await Course.find({});
 
-      const courseIds = expiredCourses.map((course) => course._id);
+      const toExpire = [];
+      const toReinstate = [];
 
-      if (courseIds.length > 0) {
-        // Step 2: Update enrollments with status "enrolled" only
-        const updated = await Enrollment.updateMany(
+      for (const course of allCourses) {
+        if (!course.paymentReceiveEndDate) continue;
+
+        if (course.paymentReceiveEndDate < now) {
+          // Expire if past the window
+          toExpire.push(course._id);
+        } else {
+          // Reinstate if extended
+          toReinstate.push(course._id);
+        }
+      }
+
+      // ✅ Step 2: Expire enrollments
+      if (toExpire.length) {
+        const result = await Enrollment.updateMany(
           {
-            courseId: { $in: courseIds },
-            status: "enrolled",
+            courseId: { $in: toExpire },
+            "enrollments.status": "enrolled",
           },
           {
             $set: {
-              status: "expired",
-              remark: "", // Clear any existing remarks
+              "enrollments.$[elem].status": "expired",
+              "enrollments.$[elem].remark": "",
             },
+          },
+          {
+            arrayFilters: [{ "elem.status": "enrolled" }],
           }
         );
+        console.log(`⏳ Expired ${result.modifiedCount} enrollments.`);
+      }
 
-        console.log(`✅ Expired ${updated.modifiedCount} enrollments with cleared remarks.`);
-      } else {
-        console.log("ℹ️ No expired courses found.");
+      // ✅ Step 3: Reinstate expired if deadline was extended
+      if (toReinstate.length) {
+        const result = await Enrollment.updateMany(
+          {
+            courseId: { $in: toReinstate },
+            "enrollments.status": "expired",
+          },
+          {
+            $set: {
+              "enrollments.$[elem].status": "enrolled",
+            },
+          },
+          {
+            arrayFilters: [{ "elem.status": "expired" }],
+          }
+        );
+        console.log(`✅ Reinstated ${result.modifiedCount} expired enrollments.`);
       }
     } catch (error) {
       console.error("❌ Error in cron job:", error);

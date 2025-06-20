@@ -21,7 +21,6 @@ cloudinary.config({
   api_secret: API_SECRET,
 });
 
-
 exports.enrollEligibility = async (req, res) => {
   const { studentId, courseId } = req.body;
 
@@ -40,7 +39,14 @@ exports.enrollEligibility = async (req, res) => {
         .status(404)
         .json({ success: false, reasons: ["Course or Student not found"] });
     }
-
+    if (!student.isAccountVerified) {
+      return res.status(403).json({
+        success: false,
+        reasons: [
+          "Your account is not verified. Please wait for verification.",
+        ],
+      });
+    }
     const courseCategoryId =
       typeof course.category === "object" && course.category?._id
         ? course.category._id.toString()
@@ -143,47 +149,73 @@ exports.enrollEligibility = async (req, res) => {
   }
 };
 
-
-
 exports.enrollStudent = async (req, res) => {
   try {
-    const { courseId, studentId } = req.body;
-    if (!courseId || !studentId) {
-      return res.status(400).json({ error: "Missing courseId or studentId" });
-    }
+    const { courseId, studentId, courseTitle, categoryId } = req.body;
 
+    if (!courseId || !studentId || !courseTitle || !categoryId) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({ error: "Course not found" });
     }
+    // ✅ Verify student
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: "Student not found." });
+    }
+
+    if (!student.isAccountVerified) {
+      return res.status(403).json({ error: "Please wait for verification." });
+    }
 
     const now = new Date();
 
-    // Check if registration is open
+    // ✅ Find or create enrollment doc for the course
+    let enrollmentDoc = await Enrollment.findOne({ courseId });
     if (
       now < course.registrationStartDate ||
       now > course.registrationEndDate
     ) {
-      return res
-        .status(403)
-        .json({ error: "Registration window is closed." });
+      return res.status(403).json({ error: "Registration window is closed." });
     }
 
-    // Count current enrollments
-    const totalEnrolled = await Enrollment.countDocuments({
-      courseId,
-      status: "enrolled",
-    });
+    if (!enrollmentDoc) {
+      enrollmentDoc = new Enrollment({
+        courseId,
+        courseTitle,
+        categoryId,
+        enrollments: [],
+      });
+    }
 
-    const totalWaitlist = await Enrollment.countDocuments({
-      courseId,
-      status: "waitlist",
-    });
+    const existing = enrollmentDoc.enrollments.find(
+      (entry) => entry.studentId.toString() === studentId
+    );
+
+    if (existing) {
+      return res
+        .status(409)
+        .json({ error: "You already enrolled or waitlisted." });
+    }
+
+    // ✅ Calculate current enrolled/waitlist count
+    const totalEnrolled = enrollmentDoc.enrollments.filter(
+      (e) => e.status === "enrolled"
+    ).length;
+    const totalWaitlist = enrollmentDoc.enrollments.filter(
+      (e) => e.status === "waitlist"
+    ).length;
+
+    // Improved fallback cap logic
+    const studentCap = enrollmentDoc.studentCap || 50;
+    const waitlistCap = enrollmentDoc.waitlistCap || 20;
 
     let status = "enrolled";
 
-    if (totalEnrolled >= course.studentCap) {
-      if (totalWaitlist < course.waitlistCap) {
+    if (totalEnrolled >= studentCap) {
+      if (totalWaitlist < waitlistCap) {
         status = "waitlist";
       } else {
         return res.status(403).json({
@@ -192,28 +224,19 @@ exports.enrollStudent = async (req, res) => {
       }
     }
 
-    // Prevent duplicate
-    const alreadyEnrolled = await Enrollment.findOne({
-      courseId,
-      studentId,
-    });
-    if (alreadyEnrolled) {
-      return res
-        .status(409)
-        .json({ error: "You already enrolled or waitlisted." });
-    }
-
-    const newEnrollment = new Enrollment({
-      courseId,
+    // ✅ Add enrollment
+    enrollmentDoc.enrollments.push({
       studentId,
       status,
     });
 
-    await newEnrollment.save();
+    await enrollmentDoc.save();
 
     return res.status(201).json({
-      message: `Successfully ${status === "waitlist" ? "waitlisted" : "enrolled"}.`,
-      data: newEnrollment,
+      message: `Successfully ${
+        status === "waitlist" ? "waitlisted" : "enrolled"
+      }.`,
+      data: { courseId, studentId, status },
     });
   } catch (error) {
     console.error("Enrollment error:", error);
@@ -221,60 +244,143 @@ exports.enrollStudent = async (req, res) => {
   }
 };
 
-
 exports.getEnrollmentsByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
 
-    const enrollments = await Enrollment.find({ courseId })
-      .populate("studentId", "name bmdcNo email contactNumber") // get student info
-      .populate("courseId", "title"); // optional, for title confirmation
+    // Find enrollment doc for the course and populate nested studentId fields
+    const enrollmentDoc = await Enrollment.findOne({ courseId })
+      .populate("enrollments.studentId", "name bmdcNo email contactNumber")
+      .populate("courseId", "title");
 
-    return res.json(enrollments);
+    if (!enrollmentDoc) {
+      return res
+        .status(404)
+        .json({ error: "No enrollment history found for this course." });
+    }
+
+    // Return the document as-is, or you can shape it like this:
+    const result = {
+      _id: enrollmentDoc._id,
+      courseId: enrollmentDoc.courseId._id,
+      title: enrollmentDoc.courseId.title,
+      categoryId: enrollmentDoc.categoryId,
+      enrollments: enrollmentDoc.enrollments,
+    };
+
+    return res.json(result);
   } catch (error) {
     console.error("Error fetching enrollments by course:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-exports.getFinalListByCourse = async (req, res) => {
+exports.getConfirmListByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
 
-    const enrollments = await Enrollment.find({
-      courseId,
-      status: "confirmed", // Only confirmed enrollments
-    })
-      .populate("studentId", "name bmdcNo email contactNumber")
-      .populate("courseId", "title");
+    // Find the EnrollmentHistory document for this course
+    const enrollmentHistory = await Enrollment.findOne({ courseId })
+      .populate("enrollments.studentId", "name bmdcNo email contactNumber")
+      .lean();
 
-    return res.json(enrollments);
+    if (!enrollmentHistory) {
+      return res.status(404).json({ error: "No enrollment history found for this course." });
+    }
+
+    // Filter only confirmed enrollments from the enrollments array
+    const confirmedEnrollments = enrollmentHistory.enrollments.filter(
+      (enrollment) => enrollment.status === "confirmed"
+    );
+
+    return res.json(confirmedEnrollments);
   } catch (error) {
     console.error("Error fetching confirmed enrollments:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-exports.getEnrollmentsByStudent = async (req, res) => {
+
+exports.getFinalListByCourse = async (req, res) => {
   try {
-    const { studentId } = req.params;
+    const { courseId } = req.params;
 
-    const enrollments = await Enrollment.find({ studentId })
-      .populate("courseId", "title"); // optional, for title confirmation
+    if (!courseId) {
+      return res.status(400).json({ error: "Course ID is required." });
+    }
 
-    return res.json(enrollments);
+    // Find the EnrollmentHistory document for the course
+    const enrollmentHistory = await Enrollment.findOne({ courseId })
+      .populate("enrollments.studentId", "name bmdcNo email contactNumber")
+      .lean();
+
+    if (!enrollmentHistory) {
+      return res.status(404).json({ error: "No enrollment history found for this course." });
+    }
+
+    // Filter enrollments: confirmed + isAttend true
+    const attendedEnrollments = enrollmentHistory.enrollments.filter(
+      (enroll) => enroll.status === "confirmed" && enroll.isAttend === true
+    );
+
+    // Attach parent-level info to each item
+    const enriched = attendedEnrollments.map((enroll) => ({
+      ...enroll,
+      courseId: enrollmentHistory.courseId,
+      courseTitle: enrollmentHistory.courseTitle,
+      categoryId: enrollmentHistory.categoryId,
+    }));
+
+    return res.json(enriched);
   } catch (error) {
-    console.error("Error fetching enrollments by course:", error);
+    console.error("Error fetching attended confirmed enrollments:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-const uploadPaymentProofToCloudinary = async (imageBuffer, courseTitleShortForm, courseStartDate) => {
+
+exports.getEnrollmentsByStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    // Find EnrollmentHistory docs with student's enrollment, populate course title
+    const enrollments = await Enrollment.find({
+      "enrollments.studentId": studentId,
+    }).populate("courseId", "title");
+
+    const filtered = enrollments.map((doc) => {
+      const enrollmentForStudent = doc.enrollments.find(
+        (e) => e.studentId.toString() === studentId
+      );
+
+      return {
+        _id: doc._id,
+        title: doc.courseId?.title || "", // pull title from populated courseId
+        courseId: doc.courseId?._id || null, // just the ObjectId string
+        categoryId: doc.categoryId,
+        enrollment: enrollmentForStudent,
+      };
+    });
+
+    return res.json(filtered);
+  } catch (error) {
+    console.error("Error fetching enrollments by student:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const uploadPaymentProofToCloudinary = async (
+  imageBuffer,
+  courseTitleShortForm,
+  courseStartDate
+) => {
   // Format: MMMYYYY (e.g., Jun2025)
-  const monthYear = new Date(courseStartDate).toLocaleString("en-US", {
-    month: "short",
-    year: "numeric",
-  }).replace(" ", "");
+  const monthYear = new Date(courseStartDate)
+    .toLocaleString("en-US", {
+      month: "short",
+      year: "numeric",
+    })
+    .replace(" ", "");
 
   const folderName = `aoa-bd/payment/${courseTitleShortForm}/${monthYear}`;
 
@@ -305,38 +411,53 @@ const deleteFromCloudinary = async (publicId) => {
   } catch (error) {
     throw new Error("Cloudinary deletion failed");
   }
-}
+};
 
 const generateShortForm = function (title = "") {
   return title
     .split(/[\s—–\-]+/) // Split on spaces, hyphens, em-dash etc.
-    .map(word => word[0]?.toUpperCase())
+    .map((word) => word[0]?.toUpperCase())
     .filter(Boolean)
     .join("");
 };
 
 exports.uploadPaymentProof = async (req, res) => {
   try {
-    const { studentId, courseId } = req.body;
+    const { studentId, enrollmentId } = req.body;
     const file = req.file;
 
-    console.log("Body", req.body);
-    console.log("File", req.file);
-
-    if (!studentId || !courseId || !file) {
-      return res.status(400).json({ error: "Missing studentId, courseId, or file." });
+    if (!studentId || !enrollmentId || !file) {
+      return res
+        .status(400)
+        .json({ error: "Missing studentId, enrollmentId, or file." });
     }
 
-    const enrollment = await Enrollment.findOne({ studentId, courseId });
-    if (!enrollment) {
+    // Find the main document that contains the enrollment subdocument
+    const enrollmentDoc = await Enrollment.findOne({
+      "enrollments._id": enrollmentId,
+    });
+
+    if (!enrollmentDoc) {
       return res.status(404).json({ error: "Enrollment not found." });
     }
 
-    if (enrollment.status !== "enrolled") {
-      return res.status(403).json({ error: "Only enrolled students can upload payment proof." });
+    const targetEnrollment = enrollmentDoc.enrollments.id(enrollmentId);
+
+    if (!targetEnrollment) {
+      return res.status(404).json({ error: "Enrollment entry not found." });
     }
 
-    const course = await Course.findById(courseId);
+    if (targetEnrollment.studentId.toString() !== studentId) {
+      return res.status(403).json({ error: "Student ID mismatch." });
+    }
+
+    if (targetEnrollment.status !== "enrolled") {
+      return res
+        .status(403)
+        .json({ error: "Only enrolled students can upload payment proof." });
+    }
+
+    const course = await Course.findById(enrollmentDoc.courseId);
     if (!course) {
       return res.status(404).json({ error: "Course not found." });
     }
@@ -344,13 +465,14 @@ exports.uploadPaymentProof = async (req, res) => {
     const now = new Date();
     const { paymentReceiveStartDate, paymentReceiveEndDate, title } = course;
 
-  if (now < paymentReceiveStartDate) {
-  return res.status(403).json({ error: "Payment window is not open yet." });
-}
+    if (now < paymentReceiveStartDate) {
+      return res.status(403).json({ error: "Payment window is not open yet." });
+    }
 
-if (now > paymentReceiveEndDate) {
-  return res.status(403).json({ error: "Payment window is closed." });
-}
+    if (now > paymentReceiveEndDate) {
+      return res.status(403).json({ error: "Payment window is closed." });
+    }
+
     const titleShortForm = generateShortForm(title);
 
     const uploaded = await uploadPaymentProofToCloudinary(
@@ -359,18 +481,18 @@ if (now > paymentReceiveEndDate) {
       paymentReceiveStartDate
     );
 
-    enrollment.paymentProof = {
+    targetEnrollment.paymentProof = {
       url: uploaded.url,
       public_id: uploaded.public_id,
     };
-    enrollment.paymentReceived = "pending";
-    enrollment.paymentReceivedAt = new Date();
+    targetEnrollment.paymentReceived = "pending";
+    targetEnrollment.paymentReceivedAt = new Date();
 
-    await enrollment.save();
+    await enrollmentDoc.save();
 
     return res.status(200).json({
       message: "Payment proof uploaded successfully.",
-      data: enrollment,
+      data: targetEnrollment,
     });
   } catch (error) {
     console.error("Upload Payment Proof Error:", error);
@@ -380,23 +502,44 @@ if (now > paymentReceiveEndDate) {
 
 exports.rejectEnrollmentPayment = async (req, res) => {
   try {
-    const { id, remark } = req.body; // Get enrollment ID and remark from request body
+    const { courseId, studentId, remark } = req.body;
 
-    if (!id) return res.status(400).json({ error: "Enrollment ID is required" });
+    if (!courseId || !studentId) {
+      return res
+        .status(400)
+        .json({ error: "courseId and studentId are required" });
+    }
 
-    const enrollment = await Enrollment.findById(id);
-    if (!enrollment) return res.status(404).json({ error: "Enrollment not found" });
+    // Find the enrollment document for the course
+    const enrollmentDoc = await Enrollment.findOne({ courseId });
+    if (!enrollmentDoc) {
+      return res
+        .status(404)
+        .json({ error: "Enrollment record not found for this course." });
+    }
+
+    // Find the specific student's enrollment inside the enrollments array
+    const enrollment = enrollmentDoc.enrollments.find(
+      (e) => e.studentId.toString() === studentId.toString()
+    );
+
+    if (!enrollment) {
+      return res
+        .status(404)
+        .json({ error: "Student is not enrolled in this course." });
+    }
 
     // Delete payment proof from Cloudinary if it exists
     if (enrollment.paymentProof?.public_id) {
       await deleteFromCloudinary(enrollment.paymentProof.public_id);
     }
 
-    // Update fields
+    // Update the enrollment record fields
     enrollment.paymentProof = {};
     enrollment.paymentReceived = "rejected";
-    enrollment.remark = remark || ""; // Use frontend remark or empty string
-    await enrollment.save();
+    enrollment.remark = remark || "";
+
+    await enrollmentDoc.save();
 
     res.json({ message: "Payment rejected and payment proof removed." });
   } catch (error) {
@@ -407,27 +550,44 @@ exports.rejectEnrollmentPayment = async (req, res) => {
 
 exports.acceptEnrollmentPayment = async (req, res) => {
   try {
-    const { id } = req.body;
+    const { courseId, studentId } = req.body;
+    console.log("🔍 Accept Payment", req.body);
 
-    if (!id) {
-      return res.status(400).json({ error: "Enrollment ID is required" });
+    if (!courseId || !studentId) {
+      return res
+        .status(400)
+        .json({ error: "courseId and studentId are required" });
     }
 
-    const enrollment = await Enrollment.findById(id);
+    const enrollmentDoc = await Enrollment.findOne({ courseId });
+    if (!enrollmentDoc) {
+      return res
+        .status(404)
+        .json({ error: "Enrollment record not found for this course." });
+    }
+
+    const enrollment = enrollmentDoc.enrollments.find(
+      (e) => e.studentId?.toString() === String(studentId)
+    );
+
     if (!enrollment) {
-      return res.status(404).json({ error: "Enrollment not found" });
+      return res
+        .status(404)
+        .json({ error: "Student is not enrolled in this course." });
     }
 
-    // Update enrollment details
+    // ✅ Update enrollment
     enrollment.paymentReceived = "approved";
     enrollment.status = "confirmed";
     enrollment.remark = "";
+    enrollment.paymentReceivedAt = new Date();
 
-    await enrollment.save();
+    enrollmentDoc.markModified("enrollments"); // 👈 required for subdocs
+    await enrollmentDoc.save();
 
     res.json({ message: "Payment accepted and enrollment confirmed." });
   } catch (error) {
-    console.error("Accept Error:", error);
+    console.error("❌ Accept Error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -440,10 +600,23 @@ exports.moveToEnrolled = async (req, res) => {
       return res.status(400).json({ error: "Missing studentId or courseId." });
     }
 
-    const enrollment = await Enrollment.findOne({ studentId, courseId });
+    // Find enrollment document by courseId
+    const enrollmentDoc = await Enrollment.findOne({ courseId });
+    if (!enrollmentDoc) {
+      return res
+        .status(404)
+        .json({ error: "Enrollment record not found for this course." });
+    }
+
+    // Find specific student's enrollment
+    const enrollment = enrollmentDoc.enrollments.find(
+      (e) => e.studentId.toString() === studentId.toString()
+    );
 
     if (!enrollment) {
-      return res.status(404).json({ error: "Enrollment not found." });
+      return res
+        .status(404)
+        .json({ error: "Student is not enrolled in this course." });
     }
 
     if (enrollment.status !== "waitlist") {
@@ -452,8 +625,10 @@ exports.moveToEnrolled = async (req, res) => {
       });
     }
 
+    // Update status inside the enrollments array
     enrollment.status = "enrolled";
-    await enrollment.save();
+
+    await enrollmentDoc.save();
 
     return res.status(200).json({
       message: "Enrollment status changed to 'enrolled' successfully.",
@@ -462,5 +637,45 @@ exports.moveToEnrolled = async (req, res) => {
   } catch (error) {
     console.error("Move to enrolled error:", error);
     return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+// Update isAttend = true for selected students
+
+exports.markStudentsAsPresent = async (req, res) => {
+  try {
+    const { ids = [] } = req.body; // ids here are enrollment subdocument _ids
+    const { courseId } = req.params;
+    
+    if (!Array.isArray(ids) || !courseId) {
+      return res.status(400).json({ error: "Invalid request body" });
+    }
+
+    // Step 1: Set isAttend: true for selected enrollment subdocuments
+    await Enrollment.updateOne(
+      { courseId },
+      {
+        $set: { "enrollments.$[elem].isAttend": true },
+      },
+      {
+        arrayFilters: [{ "elem._id": { $in: ids } }],
+      }
+    );
+
+    // Step 2: Set isAttend: false for enrollment subdocuments NOT in selected ids
+    await Enrollment.updateOne(
+      { courseId },
+      {
+        $set: { "enrollments.$[elem].isAttend": false },
+      },
+      {
+        arrayFilters: [{ "elem._id": { $nin: ids } }],
+      }
+    );
+    
+    return res.json({ success: true, message: "Attendance status updated" });
+  } catch (error) {
+    console.error("Error updating attendance:", error);
+    res.status(500).json({ error: "Failed to update attendance" });
   }
 };
