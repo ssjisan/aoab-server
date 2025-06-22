@@ -11,7 +11,8 @@ const {
   moveToEnrolled,
   getFinalListByCourse,
   markStudentsAsPresent,
-  getConfirmListByCourse
+  getConfirmListByCourse,
+  markCertificateIssued
 } = require("../controller/enrollmentController.js");
 
 const { requiredSignIn } = require("../middlewares/authMiddleware.js");
@@ -54,5 +55,6 @@ router.patch("/enrollment/reject", requiredSignIn, rejectEnrollmentPayment);
 router.patch("/enrollment/accept", requiredSignIn, acceptEnrollmentPayment);
 router.post("/enrollment/move", requiredSignIn, moveToEnrolled);
 router.put("/mark-attendance/:courseId", requiredSignIn, markStudentsAsPresent);
+router.post("/certificate/issue/:courseId", requiredSignIn, markCertificateIssued);
 
 module.exports = router;

@@ -107,6 +107,10 @@ const StudentSchema = new mongoose.Schema({
           size: { type: Number, required: true },
         },
       ],
+      systemUpload: {
+        type: Boolean,
+        default: false,
+      },
       completionYear: {
         type: String,
       },

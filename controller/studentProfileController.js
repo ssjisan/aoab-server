@@ -880,6 +880,7 @@ const courseDocument = async (req, res) => {
       courseCategoryId,
       status,
       completionYear: status === "yes" ? completionYear : undefined,
+      systemUpload: false,
       documents,
     };
 

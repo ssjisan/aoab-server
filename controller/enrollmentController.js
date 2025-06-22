@@ -285,7 +285,9 @@ exports.getConfirmListByCourse = async (req, res) => {
       .lean();
 
     if (!enrollmentHistory) {
-      return res.status(404).json({ error: "No enrollment history found for this course." });
+      return res
+        .status(404)
+        .json({ error: "No enrollment history found for this course." });
     }
 
     // Filter only confirmed enrollments from the enrollments array
@@ -300,7 +302,6 @@ exports.getConfirmListByCourse = async (req, res) => {
   }
 };
 
-
 exports.getFinalListByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -309,35 +310,31 @@ exports.getFinalListByCourse = async (req, res) => {
       return res.status(400).json({ error: "Course ID is required." });
     }
 
-    // Find the EnrollmentHistory document for the course
     const enrollmentHistory = await Enrollment.findOne({ courseId })
       .populate("enrollments.studentId", "name bmdcNo email contactNumber")
       .lean();
 
     if (!enrollmentHistory) {
-      return res.status(404).json({ error: "No enrollment history found for this course." });
+      return res
+        .status(404)
+        .json({ error: "No enrollment history found for this course." });
     }
 
-    // Filter enrollments: confirmed + isAttend true
     const attendedEnrollments = enrollmentHistory.enrollments.filter(
       (enroll) => enroll.status === "confirmed" && enroll.isAttend === true
     );
 
-    // Attach parent-level info to each item
-    const enriched = attendedEnrollments.map((enroll) => ({
-      ...enroll,
+    return res.json({
       courseId: enrollmentHistory.courseId,
       courseTitle: enrollmentHistory.courseTitle,
       categoryId: enrollmentHistory.categoryId,
-    }));
-
-    return res.json(enriched);
+      enrollments: attendedEnrollments,
+    });
   } catch (error) {
     console.error("Error fetching attended confirmed enrollments:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 exports.getEnrollmentsByStudent = async (req, res) => {
   try {
@@ -646,7 +643,7 @@ exports.markStudentsAsPresent = async (req, res) => {
   try {
     const { ids = [] } = req.body; // ids here are enrollment subdocument _ids
     const { courseId } = req.params;
-    
+
     if (!Array.isArray(ids) || !courseId) {
       return res.status(400).json({ error: "Invalid request body" });
     }
@@ -672,10 +669,97 @@ exports.markStudentsAsPresent = async (req, res) => {
         arrayFilters: [{ "elem._id": { $nin: ids } }],
       }
     );
-    
+
     return res.json({ success: true, message: "Attendance status updated" });
   } catch (error) {
     console.error("Error updating attendance:", error);
     res.status(500).json({ error: "Failed to update attendance" });
+  }
+};
+
+exports.markCertificateIssued = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { courseCategoryId } = req.body;
+
+    if (!courseId || !courseCategoryId) {
+      return res
+        .status(400)
+        .json({ error: "Course ID and Course Category ID are required." });
+    }
+    // Fetch course title
+    const course = await Course.findById(courseId).select("title");
+    if (!course) {
+      return res.status(404).json({ error: "Course not found." });
+    }
+
+    const courseTitleFormatted = course.title.replace(/\s+/g, "_");
+    const enrollmentDoc = await Enrollment.findOne({ courseId }).populate(
+      "enrollments.studentId",
+      "_id"
+    );
+
+    if (!enrollmentDoc) {
+      return res.status(404).json({ error: "Enrollment history not found" });
+    }
+
+    const attendedStudents = enrollmentDoc.enrollments.filter(
+      (e) => e.isAttend === true
+    );
+    const currentYear = new Date().getFullYear().toString();
+
+    const updates = attendedStudents.map((entry) => {
+      const studentId = entry.studentId?._id;
+      if (!studentId) return;
+
+      const previewUrl = `http://localhost:8000/certificate-preview?studentId=${studentId}&courseId=${courseId}&categoryId=${courseCategoryId}`;
+      const document = {
+        url: previewUrl,
+        public_id: `preview-${studentId}-${courseId}`,
+        name: courseTitleFormatted,
+        size: 0,
+      };
+
+      // Try to update if courseCategoryId already exists
+      return Student.updateOne(
+        { _id: studentId, "courses.courseCategoryId": courseCategoryId },
+        {
+          $set: {
+            "courses.$.status": "yes",
+            "courses.$.completionYear": currentYear,
+            "courses.$.systemUpload": true,
+            "courses.$.documents": [document],
+          },
+        },
+        { upsert: false }
+      ).then(async (result) => {
+        if (result.matchedCount === 0) {
+          // If courseCategoryId doesn't exist yet, push a new entry
+          return Student.updateOne(
+            { _id: studentId },
+            {
+              $push: {
+                courses: {
+                  courseCategoryId,
+                  status: "yes",
+                  completionYear: currentYear,
+                  systemUpload: true,
+                  documents: [document],
+                },
+              },
+            }
+          );
+        }
+      });
+    });
+
+    await Promise.all(updates);
+
+    return res.json({
+      message: "Certificates marked as issued or updated (with systemUpload).",
+    });
+  } catch (error) {
+    console.error("Error issuing certificate metadata:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
