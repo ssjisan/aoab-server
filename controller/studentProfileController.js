@@ -44,7 +44,6 @@ const uploadImageToCloudinary = async (imageBuffer) => {
 
 // ********************************************** The Cloudinary Profile Picture upload function End here ********************************************** //
 
-
 // ********************************************** The Cloudinary Signature upload function start here ********************************************** //
 
 const uploadSignatureToCloudinary = async (imageBuffer) => {
@@ -69,7 +68,6 @@ const uploadSignatureToCloudinary = async (imageBuffer) => {
 };
 
 // ********************************************** The Cloudinary Signature upload function end here ********************************************** //
-
 
 // ********************************************** Upload and delete PDF to Cloudinary start here ********************************************** //
 
@@ -112,7 +110,6 @@ const deletePdfFromCloudinary = async (publicId) => {
 };
 
 // ********************************************** Upload and delete PDF to Cloudinary End here ********************************************** //
-
 
 // ********************************************** Get Profile Data function start here ********************************************** //
 
@@ -164,7 +161,6 @@ const getStudentProfileByAdmin = async (req, res) => {
 };
 
 // ********************************************** Get Profile Data By admin function end here ********************************************** //
-
 
 // ********************************************** Update Profile Photo function start here ********************************************** //
 
@@ -283,8 +279,6 @@ const updateSignature = async (req, res) => {
 };
 
 // ********************************************** Update Signature function End here ********************************************** //
-
-
 
 // ************************************************** Update Student Profile Data ************************************************** //
 const updateStudentDetails = async (req, res) => {
@@ -540,6 +534,7 @@ const getVerifiedStudents = async (req, res) => {
 
     const verifiedStudents = await Student.find(query)
       .select(projection)
+      .sort({ _id: 1 })
       .lean();
 
     // Return the results
@@ -751,7 +746,7 @@ const courseDocument = async (req, res) => {
       status,
       completionYear,
       courseId,
-      removedFiles // <-- Expect this from frontend as array of file IDs to remove
+      removedFiles, // <-- Expect this from frontend as array of file IDs to remove
     } = req.body;
 
     console.log(req.body);
@@ -801,7 +796,9 @@ const courseDocument = async (req, res) => {
 
     // Delete only the files that are in removedFilesArray from Cloudinary
     for (let doc of documents) {
-      if (removedFilesArray.includes(doc._id?.toString() || doc.id?.toString())) {
+      if (
+        removedFilesArray.includes(doc._id?.toString() || doc.id?.toString())
+      ) {
         try {
           await deletePdfFromCloudinary(doc.public_id);
         } catch (err) {
@@ -812,7 +809,8 @@ const courseDocument = async (req, res) => {
 
     // Filter documents to keep only those NOT removed
     documents = documents.filter(
-      (doc) => !removedFilesArray.includes(doc._id?.toString() || doc.id?.toString())
+      (doc) =>
+        !removedFilesArray.includes(doc._id?.toString() || doc.id?.toString())
     );
 
     if (status === "yes") {
@@ -903,7 +901,6 @@ const courseDocument = async (req, res) => {
 };
 
 // -------------------------------------------------------------------------- Update end here --------------------------------------------------------------------//
-
 
 const getStudentsByStatus = async (req, res) => {
   try {

@@ -209,8 +209,8 @@ exports.enrollStudent = async (req, res) => {
     ).length;
 
     // Improved fallback cap logic
-    const studentCap = enrollmentDoc.studentCap || 50;
-    const waitlistCap = enrollmentDoc.waitlistCap || 20;
+    const studentCap = enrollmentDoc.studentCap;
+    const waitlistCap = enrollmentDoc.waitlistCap;
 
     let status = "enrolled";
 
