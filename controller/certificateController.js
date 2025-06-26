@@ -78,7 +78,7 @@ const generateCertificateImageBuffer = async ({
   // === Issued Date & Location ===
   ctx.font = "normal 32px Ubuntu";
   ctx.fillText(issuedDate, width / 2 - 654, 850);
-  ctx.fillText(location, width / 2 - 375, 850);
+  ctx.fillText(location, width / 2 - 290, 850);
 
   // === Signatures (max 2) ===
   const signWidth = 200;
@@ -191,25 +191,35 @@ const certificatePreview = async (req, res) => {
       // If same day
       issuedDate = `${start.getDate()} ${start.toLocaleString("en-US", {
         month: "long",
-        year: "numeric",
-      })}`;
+      })}, ${start.getFullYear()}`;
     } else {
       // If different days (most cases)
       issuedDate = `${start.getDate()}-${end.getDate()} ${start.toLocaleString(
         "en-US",
         {
           month: "long",
-          year: "numeric",
         }
-      )}`;
+      )}, ${start.getFullYear()}`;
     }
+    let userRoleLabel = "Participant"; // default
 
+    for (const recipient of course.recipients) {
+      if (
+        recipient.profiles.some(
+          (profile) => profile._id.toString() === student._id.toString()
+        )
+      ) {
+        userRoleLabel =
+          recipient.role?.title || recipient.role?.courseName || "Participant";
+        break;
+      }
+    }
     const buffer = await generateCertificateImageBuffer({
       studentName: student.name,
       courseTitle: course.title,
       issuedDate,
       location: course.location,
-      role: "Participant",
+      role: userRoleLabel,
       signers,
     });
 

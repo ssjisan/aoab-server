@@ -5,9 +5,11 @@ const CourseCategory = require("../model/courseCategoryModel.js"); // ✅ Add th
 const Enrollment = require("../model/enrollmentHistoryModel.js");
 const cloudinary = require("cloudinary").v2;
 const mongoose = require("mongoose");
+
 dotenv.config();
 
 const { CLOUD_NAME, API_KEY, API_SECRET } = process.env;
+const BASE_URL = process.env.BASE_URL || "http://localhost:8000";
 
 if (!CLOUD_NAME || !API_KEY || !API_SECRET) {
   throw new Error(
@@ -20,6 +22,8 @@ cloudinary.config({
   api_key: API_KEY,
   api_secret: API_SECRET,
 });
+
+// --------------------------------------------- Check Enrollment Eligibility Start Here ------------------------------------------------------------- //
 
 exports.enrollEligibility = async (req, res) => {
   const { studentId, courseId } = req.body;
@@ -149,6 +153,10 @@ exports.enrollEligibility = async (req, res) => {
   }
 };
 
+// --------------------------------------------- Check Enrollment Eligibility End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Enrollment Function Start Here ------------------------------------------------------------- //
+
 exports.enrollStudent = async (req, res) => {
   try {
     const { courseId, studentId, courseTitle, categoryId } = req.body;
@@ -160,6 +168,7 @@ exports.enrollStudent = async (req, res) => {
     if (!course) {
       return res.status(404).json({ error: "Course not found" });
     }
+
     // ✅ Verify student
     const student = await Student.findById(studentId);
     if (!student) {
@@ -209,8 +218,8 @@ exports.enrollStudent = async (req, res) => {
     ).length;
 
     // Improved fallback cap logic
-    const studentCap = enrollmentDoc.studentCap;
-    const waitlistCap = enrollmentDoc.waitlistCap;
+    const studentCap = course.studentCap ?? 0;
+    const waitlistCap = course.waitlistCap ?? 0;
 
     let status = "enrolled";
 
@@ -243,6 +252,9 @@ exports.enrollStudent = async (req, res) => {
     return res.status(500).json({ error: "Internal server error." });
   }
 };
+// --------------------------------------------- Enrollment Function End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Get Enrollment Data Start Here ------------------------------------------------------------- //
 
 exports.getEnrollmentsByCourse = async (req, res) => {
   try {
@@ -275,6 +287,10 @@ exports.getEnrollmentsByCourse = async (req, res) => {
   }
 };
 
+// --------------------------------------------- Get Enrollment Data End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Get Confirm List Start Here ------------------------------------------------------------- //
+
 exports.getConfirmListByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -301,6 +317,10 @@ exports.getConfirmListByCourse = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// --------------------------------------------- Get Confirm List End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Get Final List Start Here ------------------------------------------------------------- //
 
 exports.getFinalListByCourse = async (req, res) => {
   try {
@@ -336,6 +356,10 @@ exports.getFinalListByCourse = async (req, res) => {
   }
 };
 
+// --------------------------------------------- Get Final List End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Get Enrollment By Student Start Here ------------------------------------------------------------- //
+
 exports.getEnrollmentsByStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -365,6 +389,10 @@ exports.getEnrollmentsByStudent = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// --------------------------------------------- Get Enrollment By Student End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Upload Payment Prove to cloudinery Start Here ------------------------------------------------------------- //
 
 const uploadPaymentProofToCloudinary = async (
   imageBuffer,
@@ -417,6 +445,10 @@ const generateShortForm = function (title = "") {
     .filter(Boolean)
     .join("");
 };
+
+// --------------------------------------------- Upload Payment Prove to cloudinery End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Payment Prove Start Here ------------------------------------------------------------- //
 
 exports.uploadPaymentProof = async (req, res) => {
   try {
@@ -497,6 +529,10 @@ exports.uploadPaymentProof = async (req, res) => {
   }
 };
 
+// --------------------------------------------- Payment Prove End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Payment Reject Start Here ------------------------------------------------------------- //
+
 exports.rejectEnrollmentPayment = async (req, res) => {
   try {
     const { courseId, studentId, remark } = req.body;
@@ -545,10 +581,13 @@ exports.rejectEnrollmentPayment = async (req, res) => {
   }
 };
 
+// --------------------------------------------- Payment Reject End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Payment Accept Start Here ------------------------------------------------------------- //
+
 exports.acceptEnrollmentPayment = async (req, res) => {
   try {
     const { courseId, studentId } = req.body;
-    console.log("🔍 Accept Payment", req.body);
 
     if (!courseId || !studentId) {
       return res
@@ -588,6 +627,10 @@ exports.acceptEnrollmentPayment = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// --------------------------------------------- Payment Accept End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Move to enroll start Here ------------------------------------------------------------- //
 
 exports.moveToEnrolled = async (req, res) => {
   try {
@@ -637,7 +680,9 @@ exports.moveToEnrolled = async (req, res) => {
   }
 };
 
-// Update isAttend = true for selected students
+// --------------------------------------------- Move to enroll End Here ------------------------------------------------------------- //
+
+// --------------------------------------------- Update isAttend = true for selected students ------------------------------------------------------------- //
 
 exports.markStudentsAsPresent = async (req, res) => {
   try {
@@ -677,6 +722,9 @@ exports.markStudentsAsPresent = async (req, res) => {
   }
 };
 
+// --------------------------------------------- Update isAttend = true for selected students ------------------------------------------------------------- //
+
+// --------------------------------------------- Certificate issue start here ------------------------------------------------------------- //
 exports.markCertificateIssued = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -687,8 +735,12 @@ exports.markCertificateIssued = async (req, res) => {
         .status(400)
         .json({ error: "Course ID and Course Category ID are required." });
     }
-    // Fetch course title
-    const course = await Course.findById(courseId).select("title");
+
+    // Fetch course with recipients and title
+    const course = await Course.findById(courseId)
+      .populate("recipients.role")
+      .select("title recipients");
+
     if (!course) {
       return res.status(404).json({ error: "Course not found." });
     }
@@ -706,13 +758,15 @@ exports.markCertificateIssued = async (req, res) => {
     const attendedStudents = enrollmentDoc.enrollments.filter(
       (e) => e.isAttend === true
     );
+
     const currentYear = new Date().getFullYear().toString();
 
+    // Enrolled student updates
     const updates = attendedStudents.map((entry) => {
       const studentId = entry.studentId?._id;
       if (!studentId) return;
 
-      const previewUrl = `http://localhost:8000/certificate-preview?studentId=${studentId}&courseId=${courseId}&categoryId=${courseCategoryId}`;
+      const previewUrl = `${BASE_URL}/certificate-preview?studentId=${studentId}&courseId=${courseId}&categoryId=${courseCategoryId}`;
       const document = {
         url: previewUrl,
         public_id: `preview-${studentId}-${courseId}`,
@@ -720,7 +774,6 @@ exports.markCertificateIssued = async (req, res) => {
         size: 0,
       };
 
-      // Try to update if courseCategoryId already exists
       return Student.updateOne(
         { _id: studentId, "courses.courseCategoryId": courseCategoryId },
         {
@@ -734,7 +787,6 @@ exports.markCertificateIssued = async (req, res) => {
         { upsert: false }
       ).then(async (result) => {
         if (result.matchedCount === 0) {
-          // If courseCategoryId doesn't exist yet, push a new entry
           return Student.updateOne(
             { _id: studentId },
             {
@@ -755,11 +807,121 @@ exports.markCertificateIssued = async (req, res) => {
 
     await Promise.all(updates);
 
+    // Handle recipients
+    for (const recipient of course.recipients) {
+      const role = recipient.role;
+      if (!role || !role._id) continue;
+
+      const roleCategoryId = role._id.toString();
+      const isMultiple = role.typeOfParticipation === 1;
+      const profiles = recipient.profiles || [];
+
+      const recipientUpdates = profiles.map(async (studentId) => {
+        const student = await Student.findById(studentId);
+        if (!student) return;
+
+        const previewUrl = `${BASE_URL}/certificate-preview?studentId=${studentId}&courseId=${courseId}&categoryId=${roleCategoryId}`;
+        const document = {
+          url: previewUrl,
+          public_id: `preview-${studentId}-${courseId}`,
+          name: courseTitleFormatted,
+          size: 0,
+        };
+
+        if (!Array.isArray(student.courses)) {
+          student.courses = [];
+        }
+
+        const existingEntries = student.courses.filter(
+          (c) => c.courseCategoryId?.toString() === roleCategoryId
+        );
+
+        if (!isMultiple) {
+          // Single participation: replace old entry or add new
+          student.courses = student.courses.filter(
+            (c) => c.courseCategoryId?.toString() !== roleCategoryId
+          );
+
+          const completionYear = existingEntries.length
+            ? existingEntries[0].completionYear
+            : currentYear;
+
+          student.courses.push({
+            courseCategoryId: roleCategoryId,
+            status: "yes",
+            completionYear,
+            systemUpload: true,
+            documents: [document],
+          });
+
+          await student.save();
+        } else {
+          // Multiple participation: merge documents in existing entry or add new
+
+          // Find existing course entry
+          let courseEntry = student.courses.find(
+            (c) => c.courseCategoryId?.toString() === roleCategoryId
+          );
+
+          if (courseEntry) {
+            // Check if this document already exists in documents array
+            const docExists = courseEntry.documents.some(
+              (doc) => doc.public_id === document.public_id
+            );
+
+            if (!docExists) {
+              courseEntry.documents.push(document);
+
+              // Only set completionYear if not already set
+              if (!courseEntry.completionYear) {
+                courseEntry.completionYear = currentYear;
+              }
+
+              courseEntry.status = "yes";
+              courseEntry.systemUpload = true;
+
+              await student.save();
+            }
+          } else {
+            // No existing course entry, add new
+
+            // Check if there are already 10 entries with this courseCategoryId (rare, but let's keep it)
+            const entriesWithCategory = student.courses.filter(
+              (c) => c.courseCategoryId?.toString() === roleCategoryId
+            );
+            if (entriesWithCategory.length >= 10) {
+              const indexToRemove = student.courses.findIndex(
+                (c) => c.courseCategoryId?.toString() === roleCategoryId
+              );
+              if (indexToRemove !== -1) {
+                student.courses.splice(indexToRemove, 1);
+              }
+            }
+
+            student.courses.push({
+              courseCategoryId: roleCategoryId,
+              status: "yes",
+              completionYear: currentYear,
+              systemUpload: true,
+              documents: [document],
+            });
+
+            await student.save();
+          }
+        }
+      });
+
+      await Promise.all(recipientUpdates);
+    }
+
     return res.json({
-      message: "Certificates marked as issued or updated (with systemUpload).",
+      message:
+        "Certificates marked as issued or updated (with systemUpload) for enrolled and recipient students.",
     });
   } catch (error) {
     console.error("Error issuing certificate metadata:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// --------------------------------------------- Certificate issue start here ------------------------------------------------------------- //

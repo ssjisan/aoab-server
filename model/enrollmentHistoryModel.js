@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const enrollmentSchema  = new mongoose.Schema({
+const enrollmentSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "CourseEvent",
@@ -45,4 +45,4 @@ const enrollmentSchema  = new mongoose.Schema({
   ],
 });
 
-module.exports = mongoose.model("EnrollmentHistory", enrollmentSchema );
+module.exports = mongoose.model("EnrollmentHistory", enrollmentSchema);
