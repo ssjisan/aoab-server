@@ -81,7 +81,14 @@ const StudentSchema = new mongoose.Schema({
       },
     },
   ],
-
+  postGraduationCertificates: [
+    {
+      url: { type: String, required: true },
+      public_id: { type: String, required: true },
+      name: { type: String, required: true },
+      size: { type: Number, required: true },
+    },
+  ],
   isAccountVerified: {
     type: Boolean,
     default: false, // Will be true after OTP verification

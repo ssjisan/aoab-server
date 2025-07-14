@@ -13,22 +13,16 @@ const formsRoutes = require("./routers/formsRoutes");
 const albumRoutes = require("./routers/albumRoutes");
 const studentRoutes = require("./routers/studentRoutes");
 const webMessage = require("./helper/webMessage.js");
-const courseCategoryRoutes = require("./routers/courseCategoryRoutes.js")
-const enrollmentRoutes = require("./routers/enrollmentRoutes.js")
-const certificateRoutes = require("./routers/certificateRoutes.js")
+const courseCategoryRoutes = require("./routers/courseCategoryRoutes.js");
+const enrollmentRoutes = require("./routers/enrollmentRoutes.js");
+const certificateRoutes = require("./routers/certificateRoutes.js");
 
 const checkPaymentWindowExpiry = require("./helper/cornJob.js");
-checkPaymentWindowExpiry();
+
 dotenv.config();
 
 // Initialize Express App
 const app = express();
-
-// connect database //
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => console.error("❌ MongoDB connection failed:", err));
 
 // Middlewares
 app.use(cors());
@@ -55,6 +49,20 @@ app.get("/", (req, res) => {
   res.send(webMessage);
 });
 
-app.listen(port, () => {
-  console.log(`🔊 Server running on http://localhost:${port}`);
-});
+// Connect database and start server + cron job
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+
+    // Start the cron job AFTER DB is connected
+    checkPaymentWindowExpiry();
+
+    // Start the Express server
+    app.listen(port, () => {
+      console.log(`🔊 Server running on http://localhost:${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection failed:", err);
+  });

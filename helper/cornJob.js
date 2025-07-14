@@ -2,8 +2,16 @@ const cron = require("node-cron");
 const Enrollment = require("../model/enrollmentHistoryModel.js");
 const Course = require("../model/courseEventModel.js");
 
+let isRunning = false; // Guard flag
+
 const checkPaymentWindowExpiry = () => {
   cron.schedule("*/5 * * * *", async () => {
+    if (isRunning) {
+      console.log("⏳ Previous job still running. Skipping this run.");
+      return;
+    }
+
+    isRunning = true;
     console.log("🔄 Running payment expiry check...");
 
     try {
@@ -27,7 +35,7 @@ const checkPaymentWindowExpiry = () => {
         }
       }
 
-      // ✅ Step 2: Expire enrollments
+      // Step 2: Expire enrollments
       if (toExpire.length) {
         const result = await Enrollment.updateMany(
           {
@@ -47,7 +55,7 @@ const checkPaymentWindowExpiry = () => {
         console.log(`⏳ Expired ${result.modifiedCount} enrollments.`);
       }
 
-      // ✅ Step 3: Reinstate expired if deadline was extended
+      // Step 3: Reinstate expired if deadline was extended
       if (toReinstate.length) {
         const result = await Enrollment.updateMany(
           {
@@ -63,10 +71,14 @@ const checkPaymentWindowExpiry = () => {
             arrayFilters: [{ "elem.status": "expired" }],
           }
         );
-        console.log(`✅ Reinstated ${result.modifiedCount} expired enrollments.`);
+        console.log(
+          `✅ Reinstated ${result.modifiedCount} expired enrollments.`
+        );
       }
     } catch (error) {
       console.error("❌ Error in cron job:", error);
+    } finally {
+      isRunning = false; // Release the guard
     }
   });
 };

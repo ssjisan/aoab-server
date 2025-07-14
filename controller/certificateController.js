@@ -5,6 +5,12 @@ const Course = require("../model/courseEventModel.js");
 const Category = require("../model/courseCategoryModel.js");
 
 // Register fonts (only once)
+registerFont(path.join(__dirname, "../assets/FuturaCyrillicDemi.ttf"), {
+  family: "FuturaPtMedium",
+});
+registerFont(path.join(__dirname, "../assets/cour.ttf"), {
+  family: "CourierCustom",
+});
 registerFont(path.join(__dirname, "../assets/Ubuntu/Ubuntu-Regular.ttf"), {
   family: "Ubuntu",
   weight: "normal",
@@ -37,13 +43,13 @@ const generateCertificateImageBuffer = async ({
   ctx.drawImage(background, 0, 0, width, height);
 
   // === Name ===
-  ctx.font = "bold 36px Ubuntu";
+  ctx.font = "36px FuturaPtMedium";
   ctx.fillStyle = "#000";
   ctx.textAlign = "left";
-  ctx.fillText(studentName, width / 2 - 656, 420);
+  ctx.fillText(studentName, width / 2 - 400, 440);
 
   // === Course Title (wrap if needed) ===
-  ctx.font = "normal 32px Ubuntu";
+  ctx.font = "32px CourierCustom";
   const wrapText = (ctx, text, maxWidth) => {
     if (!text || typeof text !== "string") return [];
     const words = text.split(" ");
@@ -76,9 +82,9 @@ const generateCertificateImageBuffer = async ({
   ctx.fillText(role, width / 2 - 624, 712);
 
   // === Issued Date & Location ===
-  ctx.font = "normal 32px Ubuntu";
+  ctx.font = "32px CourierCustom";
   ctx.fillText(issuedDate, width / 2 - 654, 850);
-  ctx.fillText(location, width / 2 - 290, 850);
+  ctx.fillText(location, width / 2 - 180, 850);
 
   // === Signatures (max 2) ===
   const signWidth = 200;
@@ -87,7 +93,7 @@ const generateCertificateImageBuffer = async ({
   // Signature 1 position config
   const sign1ImageX = 860;
   const sign1ImageY = 950;
-  const sign1NameX = 748 + signWidth / 2;
+  const sign1NameX = 776 + signWidth / 2;
   const sign1NameY = sign1ImageY + signHeight + 40;
   const sign1RoleX = sign1NameX;
   const sign1RoleY = sign1ImageY + signHeight + 68;
@@ -95,7 +101,7 @@ const generateCertificateImageBuffer = async ({
   // Signature 2 position config
   const sign2ImageX = 1140;
   const sign2ImageY = 950;
-  const sign2NameX = 1030 + signWidth / 2;
+  const sign2NameX = 1045 + signWidth / 2;
   const sign2NameY = sign2ImageY + signHeight + 40;
   const sign2RoleX = sign2NameX;
   const sign2RoleY = sign2ImageY + signHeight + 68;

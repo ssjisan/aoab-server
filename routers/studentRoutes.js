@@ -25,11 +25,11 @@ const {
   updateSignature,
   courseDocument,
   getStudentsByStatus,
+  managePostGradCertificates
 } = require("../controller/studentProfileController.js");
 const router = express.Router();
 const {
   requiredSignIn,
-  isModerator,
   isSuperAdmin,
 } = require("../middlewares/authMiddleware");
 const multer = require("multer");
@@ -90,6 +90,12 @@ router.put(
 );
 
 router.get("/account-not-complete", getStudentsByStatus);
+router.post(
+  "/upload-postgrad-certificate",
+  requiredSignIn,
+  upload.array("postGradCertificate", 2),
+  managePostGradCertificates
+);
 
 router.get("/auth-check", requiredSignIn, (req, res) => {
   res.json({ ok: true });

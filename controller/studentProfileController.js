@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const cloudinary = require("cloudinary").v2;
 const mongoose = require("mongoose");
 const CourseCategory = require("../model/courseCategoryModel.js");
+const {uploadPostGradCertificateToCloudinary,deletePostGradCertificateFromCloudinary} = require("../middlewares/studentProfileMiddleware.js")
 dotenv.config();
 
 const { CLOUD_NAME, API_KEY, API_SECRET } = process.env;
@@ -110,6 +111,8 @@ const deletePdfFromCloudinary = async (publicId) => {
 };
 
 // ********************************************** Upload and delete PDF to Cloudinary End here ********************************************** //
+
+
 
 // ********************************************** Get Profile Data function start here ********************************************** //
 
@@ -953,6 +956,88 @@ const getStudentsByStatus = async (req, res) => {
   }
 };
 
+// ----------------------------------- Manage Post Grad Certificate ----------------------------------------------//
+const managePostGradCertificates = async (req, res) => {
+  console.log("🔔 managePostGradCertificates triggered");
+
+  try {
+    const studentId = req.user?._id;
+    if (!studentId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const files = req.files;
+    let toRemove = req.body.removeCertificateIds || [];
+
+    // Normalize remove list
+    if (typeof toRemove === "string") {
+      toRemove = [toRemove];
+    }
+
+    // Remove files from Cloudinary + DB
+    if (Array.isArray(toRemove) && toRemove.length > 0) {
+  await Promise.all(
+    toRemove.map(async (publicId) => {
+      try {
+        await deletePostGradCertificateFromCloudinary(publicId);
+      } catch (err) {
+        console.warn(`⚠️ Failed to delete ${publicId} from Cloudinary`, err);
+      }
+    })
+  );
+
+  student.postGraduationCertificates = student.postGraduationCertificates.filter(
+    (doc) => !toRemove.includes(doc.public_id)
+  );
+}
+
+    // Upload new PDFs
+    if (files && files.length > 0) {
+      const studentName = student.name || "Unknown";
+      const bmdcNo = student.bmdcNo || "Unknown";
+
+      const uploads = await Promise.all(
+        files.map(async (file) => {
+          const uploaded = await uploadPostGradCertificateToCloudinary(
+            file.buffer,
+            studentName,
+            bmdcNo
+          );
+
+          return {
+            url: uploaded.url,
+            public_id: uploaded.public_id,
+            name: file.originalname,
+            size: file.size,
+          };
+        })
+      );
+
+      student.postGraduationCertificates.push(...uploads);
+    }
+
+    await student.save();
+
+    return res.status(200).json({
+      message: "Certificates updated",
+      postGraduationCertificates: student.postGraduationCertificates,
+    });
+  } catch (error) {
+    console.error("Certificate manage error:", error);
+    return res.status(500).json({
+      message: "Failed to process certificates",
+      error: error.message,
+    });
+  }
+};
+
+
+
 module.exports = {
   getProfileData,
   updateProfileImage,
@@ -968,4 +1053,5 @@ module.exports = {
   removeUnverifiedEmailById,
   courseDocument,
   getStudentsByStatus,
+  managePostGradCertificates
 };
