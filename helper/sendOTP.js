@@ -2,32 +2,32 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 
 // Configure Nodemailer transporter
-// const transporter = nodemailer.createTransport({
-//   host: process.env.SMTP_HOST,
-//   port: process.env.SMTP_PORT,
-//   secure: true,
-//   auth: {
-//     user: process.env.EMAIL_USER,
-//     pass: process.env.EMAIL_PASS,
-//   },
-// });
-
-// Test Email
-// transporter.verify((error, success) => {
-//   if (error) {
-//     console.error("SMTP Error:", error);
-//   } else {
-//     console.log("SMTP Connection Successful!");
-//   }
-// });
-
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
+    pass: process.env.EMAIL_PASS,
   },
 });
+
+// Test Email
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("SMTP Error:", error);
+  } else {
+    console.log("SMTP Connection Successful!");
+  }
+});
+
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASSWORD,
+//   },
+// });
 
 // Helper to send OTP email
 const sendOtp = async (email, otp) => {

@@ -16,7 +16,7 @@ const webMessage = require("./helper/webMessage.js");
 const courseCategoryRoutes = require("./routers/courseCategoryRoutes.js");
 const enrollmentRoutes = require("./routers/enrollmentRoutes.js");
 const certificateRoutes = require("./routers/certificateRoutes.js");
-
+const backupRoutes = require("./routers/backupRoutes.js")
 const checkPaymentWindowExpiry = require("./helper/cornJob.js");
 
 dotenv.config();
@@ -41,6 +41,7 @@ app.use(albumRoutes);
 app.use(studentRoutes);
 app.use(enrollmentRoutes);
 app.use(certificateRoutes);
+app.use(backupRoutes);
 
 const port = process.env.PORT || 8001;
 
